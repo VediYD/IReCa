@@ -6,6 +6,7 @@ import os
 import numpy as np
 import scipy.signal
 import torch
+import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 import torch.optim as optim
 import torch.nn.functional as F
@@ -105,14 +106,28 @@ class Buffer:
         return result
 
 
-def mlp(x, sizes, activation=tf.keras.activations.tanh, output_activation=None):  # Build a feedforward neural network
-    # for size in sizes[:-1]:
-    #     x = tf.keras.layers.Dense(units=size, activation=activation)(x)
-    x = tf.keras.layers.Dense(64, activation="tanh")(x)
-    x = tf.keras.layers.Dense(64, activation="tanh")(x)
+class MLP(nn.Module):
+    def __init__(self, sizes, activation=nn.Tanh, output_activation=None):
+        super(MLP, self).__init__()
 
-    return tf.keras.layers.Dense(units=sizes[-1], activation=output_activation)(x)
-    # return tf.keras.layers.Dense(64)(x)
+        # Define layers
+        self.layers = nn.ModuleList()
+        input_size = sizes[0]
+
+        for size in sizes[1:-1]:
+            self.layers.append(nn.Linear(input_size, size))
+            self.layers.append(activation())
+            input_size = size
+
+        # Final output layer
+        self.layers.append(nn.Linear(input_size, sizes[-1]))
+        if output_activation:
+            self.layers.append(output_activation())
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
 
 def logprobabilities(action_logits_AI_agent, a, num_actions):
