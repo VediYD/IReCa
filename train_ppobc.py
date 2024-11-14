@@ -178,6 +178,7 @@ avg_return_sparse = []
 avg_return_env = []
 
 for epoch in range(epochs):
+    print('>> EPOCH', epoch)
 
     sum_return_sparse = 0
     sum_return_shaped = 0
@@ -189,6 +190,7 @@ for epoch in range(epochs):
     observation_HM = tf.reshape(observation_HM, (1, -1))
 
     for t in range(steps_per_epoch):
+        print('>> T', t)
 
         count_step += 1
 
@@ -246,6 +248,8 @@ for epoch in range(epochs):
     (obs_buf, act_buf, adv_buf, ret_buf, logp_buf) = buffer.get()
 
     for _ in range(iterations_train_policy):
+        print('>> U')
+
         for (
                 obs_batch, act_batch, adv_batch, ret_batch, logp_batch
         ) in tf_get_mini_batches_gpu(
@@ -256,11 +260,13 @@ for epoch in range(epochs):
                 break
             train_value_function(obs_batch, ret_batch)
 
-    print(f" [ppobc] Epoch: {epoch}. Mean Length: {sum_length / num_episodes}")
+    print(f" [ppobc] ")
     print(
-        f" Mean sparse: {sum_return_sparse / num_episodes}. "
-        f"Mean shaped: {sum_return_shaped / num_episodes}. "
-        f"Mean Env: {sum_return_env / num_episodes}. "
+        f"Epoch: {epoch}. \n"
+        f"Mean Length: {sum_length / num_episodes}. \n"
+        f" Mean sparse: {sum_return_sparse / num_episodes}. \n"
+        f"Mean shaped: {sum_return_shaped / num_episodes}. \n"
+        f"Mean Env: {sum_return_env / num_episodes}. \n"
     )
 
     avg_return_shaped.append(sum_return_shaped / num_episodes)
