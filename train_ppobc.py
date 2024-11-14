@@ -48,13 +48,13 @@ def discounted_cumulative_sums(x, discount):
 class Buffer:  # Buffer for storing trajectories
     def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):
         self.size = size
-        self.observation_buffer = tf.TensorArray(dtype=tf.float32, size=size)
-        self.action_buffer = tf.TensorArray(dtype=tf.int64, size=size)
-        self.advantage_buffer = tf.TensorArray(dtype=tf.float64, size=size)
-        self.reward_env_buffer = tf.TensorArray(dtype=tf.float64, size=size)
-        self.return_env_buffer = tf.TensorArray(dtype=tf.float64, size=size)
-        self.value_buffer = tf.TensorArray(dtype=tf.float32, size=size)
-        self.logprobability_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.observation_buffer = tf.zeros((size, observation_dimensions), dtype=tf.dtypes.float32)
+        self.action_buffer = tf.zeros(size, dtype=tf.dtypes.int32)
+        self.advantage_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
+        self.reward_env_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
+        self.return_env_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
+        self.value_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
+        self.logprobability_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
         self.gamma, self.lam = gamma, lam
         self.pointer, self.trajectory_start_index = 0, 0
 
@@ -149,11 +149,8 @@ obs_dict = env.reset()  # 得到 reset 函数返回的字典值
 both_agent_obs = obs_dict["both_agent_obs"]  # 获取两个智能体的观察值
 other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能体的环境索引
 
-both_agent_obs_tensor = tf.TensorArray(tf.float32, size=2)  # Assuming both_agent_obs has 2 elements
-both_agent_obs_tensor = both_agent_obs_tensor.unstack(tf.convert_to_tensor(both_agent_obs, dtype=tf.dtypes.float32))
-
-observation_AI = both_agent_obs_tensor.read(1 - other_agent_env_idx)
-observation_HM = both_agent_obs_tensor.read(other_agent_env_idx)
+observation_AI = np.array(both_agent_obs[1 - other_agent_env_idx])
+observation_HM = np.array(both_agent_obs[other_agent_env_idx])
 
 episode_return_sparse, episode_return_shaped = 0, 0
 episode_return_env, episode_length = 0, 0
