@@ -48,13 +48,13 @@ def discounted_cumulative_sums(x, discount):
 class Buffer:  # Buffer for storing trajectories
     def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):
         self.size = size
-        self.observation_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.observation_buffer = tf.TensorArray(dtype=tf.float64, size=size)
         self.action_buffer = tf.TensorArray(dtype=tf.int64, size=size)
-        self.advantage_buffer = tf.TensorArray(dtype=tf.float32, size=size)
-        self.reward_env_buffer = tf.TensorArray(dtype=tf.float32, size=size)
-        self.return_env_buffer = tf.TensorArray(dtype=tf.float32, size=size)
-        self.value_buffer = tf.TensorArray(dtype=tf.float32, size=size)
-        self.logprobability_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.advantage_buffer = tf.TensorArray(dtype=tf.float64, size=size)
+        self.reward_env_buffer = tf.TensorArray(dtype=tf.float64, size=size)
+        self.return_env_buffer = tf.TensorArray(dtype=tf.float64, size=size)
+        self.value_buffer = tf.TensorArray(dtype=tf.float64, size=size)
+        self.logprobability_buffer = tf.TensorArray(dtype=tf.float64, size=size)
         self.gamma, self.lam = gamma, lam
         self.pointer, self.trajectory_start_index = 0, 0
 
