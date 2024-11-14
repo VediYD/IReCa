@@ -150,8 +150,12 @@ obs_dict = env.reset()  # 得到 reset 函数返回的字典值
 both_agent_obs = obs_dict["both_agent_obs"]  # 获取两个智能体的观察值
 other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能体的环境索引
 
-observation_AI = tf.TensorArray(both_agent_obs[1 - other_agent_env_idx])
-observation_HM = tf.TensorArray(both_agent_obs[other_agent_env_idx])
+both_agent_obs_tensor = tf.TensorArray(tf.float32, size=2)  # Assuming both_agent_obs has 2 elements
+both_agent_obs_tensor = both_agent_obs_tensor.unstack(tf.convert_to_tensor(both_agent_obs, dtype=tf.dtypes.float32))
+
+observation_AI = both_agent_obs_tensor.read(1 - other_agent_env_idx)
+observation_HM = both_agent_obs_tensor.read(other_agent_env_idx)
+
 episode_return_sparse, episode_return_shaped = 0, 0
 episode_return_env, episode_length = 0, 0
 count_step = 0
