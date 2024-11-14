@@ -53,7 +53,7 @@ class Buffer:  # Buffer for storing trajectories
         self.advantage_buffer = tf.TensorArray(dtype=tf.float64, size=size)
         self.reward_env_buffer = tf.TensorArray(dtype=tf.float64, size=size)
         self.return_env_buffer = tf.TensorArray(dtype=tf.float64, size=size)
-        self.value_buffer = tf.TensorArray(dtype=tf.float64, size=size)
+        self.value_buffer = tf.TensorArray(dtype=tf.float32, size=size)
         self.logprobability_buffer = tf.TensorArray(dtype=tf.float64, size=size)
         self.gamma, self.lam = gamma, lam
         self.pointer, self.trajectory_start_index = 0, 0
