@@ -261,7 +261,7 @@ count_step = 0
 
 buffer = Buffer(observation_dimensions, steps_per_epoch)  # Initialize the buffer (# 初始化缓冲区)
 model = ActorCritic(observation_dimensions, num_actions)
-actor, critic =
+actor, critic = None, None
 
 # observation_input = tf.keras.Input(shape=(observation_dimensions,), dtype="float32")
 # action_logits_AI_agent = mlp(observation_input, list(mlp_hidden_sizes) + [num_actions])
