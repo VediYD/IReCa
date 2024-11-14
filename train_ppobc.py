@@ -117,6 +117,7 @@ def logprobabilities(action_logits_AI_agent, a):
 def sample_action(observation_AI):
     action_logits_AI_agent = actor(observation_AI)
     action_AI_agent = tf.squeeze(tf.random.categorical(action_logits_AI_agent, 1, seed=seed_generator), axis=1)
+    action_AI_agent = tf.cast(action_AI_agent, tf.int32)
     return action_logits_AI_agent, action_AI_agent
 
 
