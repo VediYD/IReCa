@@ -27,7 +27,7 @@ def tf_get_mini_batches_gpu(obs_buf, act_buf, adv_buf, ret_buf, logp_buf, batch_
         ret_buf,
         logp_buf,
     ))
-    dataset = dataset.shuffle(buffer_size=len(obs_buf))
+    dataset = dataset.shuffle(buffer_size=obs_buf.shape[0])
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
