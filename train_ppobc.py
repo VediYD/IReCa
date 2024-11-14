@@ -59,12 +59,11 @@ class Buffer:  # Buffer for storing trajectories
         self.pointer, self.trajectory_start_index = 0, 0
 
     def store(self, observation_AI, action_AI_agent, reward_env, value, logprobability):
-        # Append one step of agent-environment interaction
-        self.observation_buffer = self.observation_buffer.write(self.pointer, observation_AI)
-        self.action_buffer = self.action_buffer.write(self.pointer, action_AI_agent)
-        self.reward_env_buffer = self.reward_env_buffer.write(self.pointer, reward_env)
-        self.value_buffer = self.value_buffer.write(self.pointer, value)
-        self.logprobability_buffer = self.logprobability_buffer.write(self.pointer, logprobability)
+        self.observation_buffer[self.pointer] = observation_AI
+        self.action_buffer[self.pointer] = action_AI_agent
+        self.reward_env_buffer[self.pointer] = reward_env
+        self.value_buffer[self.pointer] = value
+        self.logprobability_buffer[self.pointer] = logprobability
         self.pointer += 1
 
     def finish_trajectory(self, last_value=0):
