@@ -45,52 +45,67 @@ def discounted_cumulative_sums(x, discount):
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 
-class Buffer:  # Buffer for storing trajectories
+class Buffer:
     def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):
-        self.size = size
-        self.observation_buffer = tf.zeros((size, observation_dimensions), dtype=tf.dtypes.float32)
-        self.action_buffer = tf.zeros(size, dtype=tf.dtypes.int32)
-        self.advantage_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.reward_env_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.return_env_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.value_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.logprobability_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
+        # Initialize buffer as TensorFlow variables for GPU compatibility
+        self.observation_buffer = tf.Variable(tf.zeros([size, observation_dimensions], dtype=tf.float32))
+        self.action_buffer = tf.Variable(tf.zeros(size, dtype=tf.int32))
+        self.advantage_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
+        self.reward_env_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
+        self.return_env_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
+        self.value_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
+        self.logprobability_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
+
         self.gamma, self.lam = gamma, lam
-        self.pointer, self.trajectory_start_index = 0, 0
+        self.pointer = 0
+        self.trajectory_start_index = 0
 
     def store(self, observation_AI, action_AI_agent, reward_env, value, logprobability):
-        self.observation_buffer[self.pointer] = observation_AI
-        self.action_buffer[self.pointer] = action_AI_agent
-        self.reward_env_buffer[self.pointer] = reward_env
-        self.value_buffer[self.pointer] = value
-        self.logprobability_buffer[self.pointer] = logprobability
+        # Storing interactions as tensors
+        self.observation_buffer[self.pointer].assign(observation_AI)
+        self.action_buffer[self.pointer].assign(action_AI_agent)
+        self.reward_env_buffer[self.pointer].assign(reward_env)
+        self.value_buffer[self.pointer].assign(value)
+        self.logprobability_buffer[self.pointer].assign(logprobability)
         self.pointer += 1
 
     def finish_trajectory(self, last_value=0):
-        # Compute advantage estimates and rewards-to-go
+        # Finish the trajectory by calculating advantage estimates and rewards-to-go on the GPU
         path_slice = slice(self.trajectory_start_index, self.pointer)
-        rewards = tf.concat([self.reward_env_buffer.stack()[path_slice], [last_value]], 0)
-        values = tf.concat([self.value_buffer.stack()[path_slice], [last_value]], 0)
 
+        rewards = tf.concat([self.reward_env_buffer[path_slice], tf.constant([last_value], dtype=tf.float32)], axis=0)
+        values = tf.concat([self.value_buffer[path_slice], tf.constant([last_value], dtype=tf.float32)], axis=0)
+
+        # Calculate deltas as tensors and store advantage estimates in advantage_buffer
         deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]
-        self.advantage_buffer = self.advantage_buffer.scatter(tf.range(path_slice.start, path_slice.stop),
-                                                              discounted_cumulative_sums(deltas, self.gamma * self.lam))
-        self.return_env_buffer = self.return_env_buffer.scatter(tf.range(path_slice.start, path_slice.stop),
-                                                                discounted_cumulative_sums(rewards, self.gamma)[:-1])
+        self.advantage_buffer[path_slice].assign(self.discounted_cumulative_sums(deltas, self.gamma * self.lam))
+
+        # Calculate return estimates and store in return_env_buffer
+        self.return_env_buffer[path_slice].assign(self.discounted_cumulative_sums(rewards, self.gamma)[:-1])
+
         self.trajectory_start_index = self.pointer
 
-    def get(self):  # Retrieve all data and normalize the advantages
+    def get(self):
+        # Reset pointer and trajectory start index
         self.pointer, self.trajectory_start_index = 0, 0
-        advantage_mean = tf.reduce_mean(self.advantage_buffer.stack())
-        advantage_std = tf.math.reduce_std(self.advantage_buffer.stack())
-        normalized_advantages = (self.advantage_buffer.stack() - advantage_mean) / advantage_std
+
+        # Normalize the advantages
+        advantage_mean, advantage_std = tf.reduce_mean(self.advantage_buffer), tf.math.reduce_std(self.advantage_buffer)
+        normalized_advantages = (self.advantage_buffer - advantage_mean) / (
+                    advantage_std + 1e-8)  # small epsilon to prevent division by zero
+
         return (
-            self.observation_buffer.stack(),
-            self.action_buffer.stack(),
-            normalized_advantages,
-            self.return_env_buffer.stack(),
-            self.logprobability_buffer.stack(),
+            self.observation_buffer.numpy(),
+            self.action_buffer.numpy(),
+            normalized_advantages.numpy(),
+            self.return_env_buffer.numpy(),
+            self.logprobability_buffer.numpy(),
         )
+
+    def discounted_cumulative_sums(self, x, discount):
+        # Discounted cumulative sums on the GPU
+        discounted_sum = tf.scan(lambda agg, val: val + discount * agg, tf.reverse(x, axis=[0]), reverse=True)
+        return tf.reverse(discounted_sum, axis=[0])
 
 
 def mlp(x, sizes, activation=tf.keras.activations.tanh, output_activation=None):  # Build a feedforward neural network
