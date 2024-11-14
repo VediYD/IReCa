@@ -173,110 +173,72 @@ elif bc_model_path_train == "./bc_runs_ireca/reproduce_train/asymmetric_advantag
 ## Train
 """
 
-avg_return_shaped = []
-avg_return_sparse = []
-avg_return_env = []
+# Pre-compute and set static parameters outside loops
+avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
+observation_AI = tf.reshape(observation_AI, (1, -1))
+observation_HM = tf.reshape(observation_HM, (1, -1))
 
+# Training Loop
 for epoch in range(epochs):
-    print('>> EPOCH', epoch)
-
-    sum_return_sparse = 0
-    sum_return_shaped = 0
-    sum_return_env = 0
-    sum_length = 0
-    num_episodes = 0
-
-    observation_AI = tf.reshape(observation_AI, (1, -1))
-    observation_HM = tf.reshape(observation_HM, (1, -1))
+    sum_return_sparse, sum_return_shaped, sum_return_env, sum_length, num_episodes = 0, 0, 0, 0, 0
 
     for t in range(steps_per_epoch):
-        print('>> T', t)
-
-        count_step += 1
-
+        # Sample actions for agents
         action_logits_AI_agent, action_AI_agent = sample_action(observation_AI)
-        action_logits_bc_agent = bc_model_train(observation_HM, training=False)
+        action_HM_agent = tf.argmax(tf.nn.softmax(bc_model_train(observation_HM, training=False)), axis=1)
 
-        action_probs_bc_agent = tf.nn.softmax(action_logits_bc_agent)
-        action_HM_agent = tf.argmax(action_probs_bc_agent, axis=1)  # 不用随机策略
+        # Step the environment
+        obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(
+            [action_AI_agent.numpy().tolist()[0], action_HM_agent.numpy().tolist()[0]]
+        )
 
-        # - Convert TensorFlow tensors to Python integers
-        action_AI_agent_np = action_AI_agent.numpy().tolist()[0]
-        action_HM_agent_np = action_HM_agent.numpy().tolist()[0]
-        action_np = [action_AI_agent_np, action_HM_agent_np]
+        # Extract and reshape observations once at each step
+        observation_AI, observation_HM = (
+            tf.reshape(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
+            tf.reshape(obs_dict_new["both_agent_obs"][other_agent_env_idx], (1, -1))
+        )
 
-        # observation_AI_new, reward_env, done, _, _ = env.step(action_AI_agent[0].numpy())
-        obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(action_np)
+        # Compute and accumulate rewards
+        reward_env = reward_sparse + max(0, 1 - count_step * learning_rate_reward_shaping) * reward_shaped
+        episode_return_sparse, episode_return_shaped, episode_return_env = (
+            episode_return_sparse + reward_sparse,
+            episode_return_shaped + reward_shaped,
+            episode_return_env + reward_env,
+        )
 
-        observation_AI_new = tf.reshape(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], (1, -1))
-        observation_HM_new = tf.reshape(obs_dict_new["both_agent_obs"][other_agent_env_idx], (1, -1))
+        # Store necessary data in buffer
+        buffer.store(observation_AI, action_AI_agent, reward_env, critic(observation_AI),
+                     logprobabilities(action_logits_AI_agent, action_AI_agent))
 
-        coeff_reward_shaped = max(0, 1 - count_step * learning_rate_reward_shaping)
-        reward_env = reward_sparse + coeff_reward_shaped * reward_shaped
-
-        episode_return_sparse += reward_sparse
-        episode_return_shaped += reward_shaped
-        episode_return_env += reward_env
-        episode_length += 1
-
-        # Get the value and log-probability of the action_AI_agent (获取动作的价值和对数概率)
-        value_t = critic(observation_AI)
-        logprobability_t = logprobabilities(action_logits_AI_agent, action_AI_agent)
-
-        # Store obs, act, rew, v_t, logp_pi_t (存储观测、动作、奖励、价值和对数概率)
-        buffer.store(observation_AI, action_AI_agent, reward_env, value_t, logprobability_t)
-
-        # Update the observation_AI (更新观测)
-        observation_AI = observation_AI_new
-        observation_HM = observation_HM_new
-
-        # Finish trajectory if reached to a terminal state (如果达到终止状态则结束轨迹)
-        terminal = done
-        if terminal or (t == steps_per_epoch - 1):
-            last_value = 0 if done else critic(observation_AI.reshape(1, -1))
+        # Handle terminal state and reset
+        if done or (t == steps_per_epoch - 1):
+            last_value = 0 if done else critic(observation_AI)
             buffer.finish_trajectory(last_value)
-            sum_return_shaped += episode_return_shaped
             sum_return_sparse += episode_return_sparse
+            sum_return_shaped += episode_return_shaped
             sum_return_env += episode_return_env
             sum_length += episode_length
             num_episodes += 1
+
+            # Reset environment and episode stats
             obs_dict = env.reset()
-            observation_AI = tf.reshape(obs_dict["both_agent_obs"][1 - other_agent_env_idx], (1, -1))
-            observation_HM = tf.reshape(obs_dict["both_agent_obs"][other_agent_env_idx], (1, -1))
-            episode_return_shaped, episode_return_sparse, episode_return_env, episode_length = 0, 0, 0, 0
+            observation_AI, observation_HM = (
+                tf.reshape(obs_dict["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
+                tf.reshape(obs_dict["both_agent_obs"][other_agent_env_idx], (1, -1))
+            )
+            episode_return_sparse, episode_return_shaped, episode_return_env, episode_length = 0, 0, 0, 0
 
-    (obs_buf, act_buf, adv_buf, ret_buf, logp_buf) = buffer.get()
-
+    # Training policy with mini-batches
     for _ in range(iterations_train_policy):
-        print('>> U')
-
-        for (
-                obs_batch, act_batch, adv_batch, ret_batch, logp_batch
-        ) in tf_get_mini_batches_gpu(
-            obs_buf, act_buf, adv_buf,  ret_buf, logp_buf, batch_size
+        for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches_gpu(
+            *buffer.get(), batch_size
         ):
             kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
             if kl > 1.5 * target_kl:
                 break
             train_value_function(obs_batch, ret_batch)
 
-    print(f" [ppobc] ")
-    print(
-        f"Epoch: {epoch}. \n"
-        f"Mean Length: {sum_length / num_episodes}. \n"
-        f" Mean sparse: {sum_return_sparse / num_episodes}. \n"
-        f"Mean shaped: {sum_return_shaped / num_episodes}. \n"
-        f"Mean Env: {sum_return_env / num_episodes}. \n"
-    )
-
+    # Summarize results after each epoch
     avg_return_shaped.append(sum_return_shaped / num_episodes)
     avg_return_sparse.append(sum_return_sparse / num_episodes)
     avg_return_env.append(sum_return_env / num_episodes)
-
-
-if bc_model_path_train == "./bc_runs_ccima/reproduce_train/cramped_room":
-    actor.save_weights("model_cr_actor_ppobc.h5")
-    critic.save_weights("model_cr_critic_ppobc.h5")
-elif bc_model_path_train == "./bc_runs_ccima/reproduce_train/asymmetric_advantages":
-    actor.save_weights("model_aa_actor_ppobc.h5")
-    critic.save_weights("model_aa_critic_ppobc.h5")
