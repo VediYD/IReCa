@@ -45,53 +45,52 @@ def discounted_cumulative_sums(x, discount):
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 
-class Buffer:  # Buffer for storing trajectories (存储轨迹的缓冲区)
-    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):  # Buffer initialization (缓冲区初始化)
-        self.observation_buffer = tf.zeros((size, observation_dimensions), dtype=tf.dtypes.float32)
-        self.action_buffer = tf.zeros(size, dtype=tf.dtypes.int32)
-        self.advantage_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.reward_env_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.return_env_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.value_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
-        self.logprobability_buffer = tf.zeros(size, dtype=tf.dtypes.float32)
+class Buffer:  # Buffer for storing trajectories
+    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):
+        self.size = size
+        self.observation_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.action_buffer = tf.TensorArray(dtype=tf.int32, size=size)
+        self.advantage_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.reward_env_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.return_env_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.value_buffer = tf.TensorArray(dtype=tf.float32, size=size)
+        self.logprobability_buffer = tf.TensorArray(dtype=tf.float32, size=size)
         self.gamma, self.lam = gamma, lam
         self.pointer, self.trajectory_start_index = 0, 0
 
     def store(self, observation_AI, action_AI_agent, reward_env, value, logprobability):
-        # Append one step of agent-environment interaction (存储一次"代理-环境"交互的步骤)
-        self.observation_buffer[self.pointer] = observation_AI
-        self.action_buffer[self.pointer] = action_AI_agent
-        self.reward_env_buffer[self.pointer] = reward_env
-        self.value_buffer[self.pointer] = value
-        self.logprobability_buffer[self.pointer] = logprobability
+        # Append one step of agent-environment interaction
+        self.observation_buffer = self.observation_buffer.write(self.pointer, observation_AI)
+        self.action_buffer = self.action_buffer.write(self.pointer, action_AI_agent)
+        self.reward_env_buffer = self.reward_env_buffer.write(self.pointer, reward_env)
+        self.value_buffer = self.value_buffer.write(self.pointer, value)
+        self.logprobability_buffer = self.logprobability_buffer.write(self.pointer, logprobability)
         self.pointer += 1
 
     def finish_trajectory(self, last_value=0):
-        # Finish the trajectory by computing advantage estimates and rewards-to-go (完成轨迹，通过计算优势估计和奖励到期)
+        # Compute advantage estimates and rewards-to-go
         path_slice = slice(self.trajectory_start_index, self.pointer)
-        rewards = tf.concat([self.reward_env_buffer[path_slice], last_value], 0)
-        values = tf.concat([self.value_buffer[path_slice], last_value], 0)
+        rewards = tf.concat([self.reward_env_buffer.stack()[path_slice], [last_value]], 0)
+        values = tf.concat([self.value_buffer.stack()[path_slice], [last_value]], 0)
 
-        deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]  # 计算优势估计
-        self.advantage_buffer[path_slice] = discounted_cumulative_sums(deltas, self.gamma * self.lam)
-
-        self.return_env_buffer[path_slice] = discounted_cumulative_sums(rewards, self.gamma)[:-1]  # 计算奖励到期
-
+        deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]
+        self.advantage_buffer = self.advantage_buffer.scatter(tf.range(path_slice.start, path_slice.stop),
+                                                              discounted_cumulative_sums(deltas, self.gamma * self.lam))
+        self.return_env_buffer = self.return_env_buffer.scatter(tf.range(path_slice.start, path_slice.stop),
+                                                                discounted_cumulative_sums(rewards, self.gamma)[:-1])
         self.trajectory_start_index = self.pointer
 
-    def get(self):  # Get all data of the buffer and normalize the advantages (获取所有缓冲区的数据)
+    def get(self):  # Retrieve all data and normalize the advantages
         self.pointer, self.trajectory_start_index = 0, 0
-        advantage_mean, advantage_std = (
-            tf.math.reduce_mean(self.advantage_buffer),
-            tf.math.reduce_std(self.advantage_buffer),
-        )
-        self.advantage_buffer = (self.advantage_buffer - advantage_mean) / advantage_std
+        advantage_mean = tf.reduce_mean(self.advantage_buffer.stack())
+        advantage_std = tf.math.reduce_std(self.advantage_buffer.stack())
+        normalized_advantages = (self.advantage_buffer.stack() - advantage_mean) / advantage_std
         return (
-            self.observation_buffer,
-            self.action_buffer,
-            self.advantage_buffer,
-            self.return_env_buffer,
-            self.logprobability_buffer,
+            self.observation_buffer.stack(),
+            self.action_buffer.stack(),
+            normalized_advantages,
+            self.return_env_buffer.stack(),
+            self.logprobability_buffer.stack(),
         )
 
 
