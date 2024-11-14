@@ -254,7 +254,7 @@ for epoch in range(epochs):
     for _ in range(iterations_train_policy):
         for (
                 obs_batch, act_batch, adv_batch, ret_batch, logp_batch
-        ) in tf_get_mini_batches(
+        ) in tf_get_mini_batches_gpu(
             obs_buf, act_buf, adv_buf,  ret_buf, logp_buf, batch_size
         ):
             kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
