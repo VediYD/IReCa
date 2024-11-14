@@ -45,24 +45,26 @@ def discounted_cumulative_sums(x, discount):
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 
-class Buffer:
+class Buffer:  # GPU-optimized Buffer
     def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):
-        # Initialize buffer as TensorFlow variables for GPU compatibility
-        self.observation_buffer = tf.Variable(tf.zeros([size, observation_dimensions], dtype=tf.float32))
+        self.observation_buffer = tf.Variable(tf.zeros((size, observation_dimensions), dtype=tf.float32))
         self.action_buffer = tf.Variable(tf.zeros(size, dtype=tf.int32))
         self.advantage_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.reward_env_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.return_env_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.value_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.logprobability_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
-
         self.gamma, self.lam = gamma, lam
-        self.pointer = 0
-        self.trajectory_start_index = 0
+        self.pointer, self.trajectory_start_index = 0, 0
 
     def store(self, observation_AI, action_AI_agent, reward_env, value, logprobability):
-        # Storing interactions as tensors
-        self.observation_buffer[self.pointer].assign(observation_AI)
+        # Convert tensors to float32 if needed to prevent dtype mismatch
+        observation_AI = tf.cast(observation_AI, dtype=tf.float32)
+        value = tf.cast(value, dtype=tf.float32)
+        logprobability = tf.cast(logprobability, dtype=tf.float32)
+
+        # Store the values in the buffer
+        self.observation_buffer[self.pointer].assign(observation_AI[0])  # Store flattened observation
         self.action_buffer[self.pointer].assign(action_AI_agent)
         self.reward_env_buffer[self.pointer].assign(reward_env)
         self.value_buffer[self.pointer].assign(value)
@@ -70,42 +72,30 @@ class Buffer:
         self.pointer += 1
 
     def finish_trajectory(self, last_value=0):
-        # Finish the trajectory by calculating advantage estimates and rewards-to-go on the GPU
         path_slice = slice(self.trajectory_start_index, self.pointer)
+        rewards = np.append(self.reward_env_buffer[path_slice].numpy(), last_value)
+        values = np.append(self.value_buffer[path_slice].numpy(), last_value)
 
-        rewards = tf.concat([self.reward_env_buffer[path_slice], tf.constant([last_value], dtype=tf.float32)], axis=0)
-        values = tf.concat([self.value_buffer[path_slice], tf.constant([last_value], dtype=tf.float32)], axis=0)
-
-        # Calculate deltas as tensors and store advantage estimates in advantage_buffer
         deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]
-        self.advantage_buffer[path_slice].assign(self.discounted_cumulative_sums(deltas, self.gamma * self.lam))
+        self.advantage_buffer[path_slice].assign(
+            tf.convert_to_tensor(discounted_cumulative_sums(deltas, self.gamma * self.lam), dtype=tf.float32))
 
-        # Calculate return estimates and store in return_env_buffer
-        self.return_env_buffer[path_slice].assign(self.discounted_cumulative_sums(rewards, self.gamma)[:-1])
-
+        self.return_env_buffer[path_slice].assign(
+            tf.convert_to_tensor(discounted_cumulative_sums(rewards, self.gamma)[:-1], dtype=tf.float32))
         self.trajectory_start_index = self.pointer
 
     def get(self):
-        # Reset pointer and trajectory start index
         self.pointer, self.trajectory_start_index = 0, 0
-
-        # Normalize the advantages
         advantage_mean, advantage_std = tf.reduce_mean(self.advantage_buffer), tf.math.reduce_std(self.advantage_buffer)
-        normalized_advantages = (self.advantage_buffer - advantage_mean) / (
-                    advantage_std + 1e-8)  # small epsilon to prevent division by zero
+        self.advantage_buffer.assign((self.advantage_buffer - advantage_mean) / advantage_std)
 
         return (
-            self.observation_buffer.numpy(),
-            self.action_buffer.numpy(),
-            normalized_advantages.numpy(),
-            self.return_env_buffer.numpy(),
-            self.logprobability_buffer.numpy(),
+            self.observation_buffer,
+            self.action_buffer,
+            self.advantage_buffer,
+            self.return_env_buffer,
+            self.logprobability_buffer
         )
-
-    def discounted_cumulative_sums(self, x, discount):
-        # Discounted cumulative sums on the GPU
-        discounted_sum = tf.scan(lambda agg, val: val + discount * agg, tf.reverse(x, axis=[0]), reverse=True)
-        return tf.reverse(discounted_sum, axis=[0])
 
 
 def mlp(x, sizes, activation=tf.keras.activations.tanh, output_activation=None):  # Build a feedforward neural network
@@ -165,6 +155,9 @@ other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能�
 
 observation_AI = np.array(both_agent_obs[1 - other_agent_env_idx])
 observation_HM = np.array(both_agent_obs[other_agent_env_idx])
+
+observation_AI = tf.cast(tf.reshape(observation_AI, (1, -1)), dtype=tf.float32)
+observation_HM = tf.cast(tf.reshape(observation_HM, (1, -1)), dtype=tf.float32)
 
 episode_return_sparse, episode_return_shaped = 0, 0
 episode_return_env, episode_length = 0, 0
