@@ -1,7 +1,7 @@
 import os
 os.environ["KERAS_BACKEND"] = "tensorflow"
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 指定使用哪块GPU
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 指定使用哪块GPU
 
 import numpy as np
 import tensorflow as tf

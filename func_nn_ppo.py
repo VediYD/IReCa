@@ -4,6 +4,7 @@ from tensorflow.keras.regularizers import l1_l2
 l1_reg = 1e-4 # 稀疏
 l2_reg = 2e-4 # 缩小
 
+
 def func_nn_ppo(observation_dimensions, num_actions):
     
     inputs = tf.keras.Input(shape=(observation_dimensions,), dtype="float32")
@@ -21,7 +22,6 @@ def func_nn_ppo(observation_dimensions, num_actions):
     x = tf.keras.layers.Dense(64, activation="tanh", kernel_regularizer=l1_l2(l1=l1_reg, l2=l2_reg))(x)
     action_logits = tf.keras.layers.Dense(num_actions, kernel_regularizer=l1_l2(l1=l1_reg, l2=l2_reg))(x)  # 通常策略网络的输出不需要激活函数
     actor = tf.keras.Model(inputs=inputs, outputs=action_logits, name='actor')
-
 
     # -- critic --
     x = tf.keras.layers.Reshape((12, 8, 1))(inputs)

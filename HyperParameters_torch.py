@@ -54,7 +54,7 @@ base_env = OvercookedEnv.from_mdp(mdp, horizon=horizon_len)
 env = gym.make("Overcooked-v0", base_env = base_env, featurize_fn = base_env.featurize_state_mdp)
 
 # -------- (BC human) model loading --------
-from BC_model_functions import load_bc_model
+from BC_model_functions_torch import load_bc_model
 # --
 bc_model_train, bc_params_train = load_bc_model(bc_model_path_train)
 bc_model_test,  bc_params_test  = load_bc_model(bc_model_path_test)

@@ -12,7 +12,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-from func_nn_ppo import func_nn_ppo
+from func_nn_ppo_torch import ActorCritic
 from HyperParameters import *
 
 # ----
@@ -49,7 +49,7 @@ def discounted_cumulative_sums(x, discount):
 
 
 class Buffer:
-    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95, device='cpu'):
+    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95, device='gpu'):
         self.device = device  # Store the device ('cpu' or 'cuda')
         self.observation_buffer = torch.zeros((size, observation_dimensions), dtype=torch.float32, device=self.device)
         self.action_buffer = torch.zeros(size, dtype=torch.int32, device=self.device)
@@ -260,7 +260,8 @@ count_step = 0
 # -------- end of env configuration --------
 
 buffer = Buffer(observation_dimensions, steps_per_epoch)  # Initialize the buffer (# 初始化缓冲区)
-actor, critic = func_nn_ppo(observation_dimensions, num_actions)
+model = ActorCritic(observation_dimensions, num_actions)
+actor, critic =
 
 # observation_input = tf.keras.Input(shape=(observation_dimensions,), dtype="float32")
 # action_logits_AI_agent = mlp(observation_input, list(mlp_hidden_sizes) + [num_actions])
@@ -313,8 +314,13 @@ for epoch in range(epochs):
 
         obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(action_np)
 
-        observation_AI_new = torch.tensor(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], dtype=torch.float32).reshape(1, -1)
-        observation_HM_new = torch.tensor(obs_dict_new["both_agent_obs"][other_agent_env_idx], dtype=torch.float32).reshape(1, -1)
+        observation_AI_new = torch.tensor(
+            obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], dtype=torch.float32
+        ).reshape(1, -1)
+
+        observation_HM_new = torch.tensor(
+            obs_dict_new["both_agent_obs"][other_agent_env_idx], dtype=torch.float32
+        ).reshape(1, -1)
 
         coeff_reward_shaped = max(0, 1 - count_step * learning_rate_reward_shaping)
         reward_env = reward_sparse + coeff_reward_shaped * reward_shaped
@@ -342,8 +348,12 @@ for epoch in range(epochs):
             sum_length += episode_length
             num_episodes += 1
             obs_dict = env.reset()
-            observation_AI = torch.tensor(obs_dict["both_agent_obs"][1 - other_agent_env_idx], dtype=torch.float32).reshape(1, -1)
-            observation_HM = torch.tensor(obs_dict["both_agent_obs"][other_agent_env_idx], dtype=torch.float32).reshape(1, -1)
+            observation_AI = torch.tensor(
+                obs_dict["both_agent_obs"][1 - other_agent_env_idx], dtype=torch.float32
+            ).reshape(1, -1)
+            observation_HM = torch.tensor(
+                obs_dict["both_agent_obs"][other_agent_env_idx], dtype=torch.float32
+            ).reshape(1, -1)
             episode_return_shaped, episode_return_sparse, episode_return_env, episode_length = 0, 0, 0, 0
 
     obs_buf, act_buf, adv_buf, ret_buf, logp_buf = buffer.get()
@@ -359,7 +369,9 @@ for epoch in range(epochs):
 
     print(f" [ppobc] Epoch: {epoch}. Mean Length: {sum_length / num_episodes}")
     print(
-        f" Mean sparse: {sum_return_sparse / num_episodes}. Mean shaped: {sum_return_shaped / num_episodes}. Mean Env: {sum_return_env / num_episodes}. "
+        f" Mean sparse: {sum_return_sparse / num_episodes}. "
+        f"Mean shaped: {sum_return_shaped / num_episodes}. "
+        f"Mean Env: {sum_return_env / num_episodes}. "
     )
 
     avg_return_shaped.append(sum_return_shaped / num_episodes)
