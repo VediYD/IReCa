@@ -18,12 +18,6 @@ seed_generator = tf.random.set_seed(1337)
 
 
 def tf_get_mini_batches_gpu(obs_buf, act_buf, adv_buf, ret_buf, logp_buf, batch_size):
-    # Convert buffers to GPU tensors
-    obs_buf = tf.identity(tf.convert_to_tensor(obs_buf), device='/gpu:0')
-    act_buf = tf.identity(tf.convert_to_tensor(act_buf), device='/gpu:0')
-    adv_buf = tf.identity(tf.convert_to_tensor(adv_buf), device='/gpu:0')
-    ret_buf = tf.identity(tf.convert_to_tensor(ret_buf), device='/gpu:0')
-    logp_buf = tf.identity(tf.convert_to_tensor(logp_buf), device='/gpu:0')
 
     # Use Dataset API to batch and prefetch
     dataset = tf.data.Dataset.from_tensor_slices((
