@@ -67,15 +67,24 @@ class Buffer:  # GPU-optimized Buffer
 
     def finish_trajectory(self, last_value=0):
         path_slice = slice(self.trajectory_start_index, self.pointer)
-        rewards = np.append(self.reward_env_buffer[path_slice].numpy(), last_value)
-        values = np.append(self.value_buffer[path_slice].numpy(), last_value)
 
+        # Slice relevant parts of the buffers
+        rewards = self.reward_env_buffer[path_slice]
+        values = self.value_buffer[path_slice]
+
+        # Append `last_value` using tf.concat
+        rewards = tf.concat([rewards, tf.convert_to_tensor([last_value], dtype=rewards.dtype)], axis=0)
+        values = tf.concat([values, tf.convert_to_tensor([last_value], dtype=values.dtype)], axis=0)
+
+        # Calculate deltas using TensorFlow operations
         deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]
-        self.advantage_buffer[path_slice].assign(
-            tf.convert_to_tensor(discounted_cumulative_sums(deltas, self.gamma * self.lam), dtype=tf.float32))
+        advantages = discounted_cumulative_sums(deltas, self.gamma * self.lam)
+        self.advantage_buffer[path_slice].assign(advantages)
 
-        self.return_env_buffer[path_slice].assign(
-            tf.convert_to_tensor(discounted_cumulative_sums(rewards, self.gamma)[:-1], dtype=tf.float32))
+        # Calculate returns using TensorFlow operations
+        returns = discounted_cumulative_sums(rewards, self.gamma)[:-1]
+        self.return_env_buffer[path_slice].assign(returns)
+
         self.trajectory_start_index = self.pointer
 
     def get(self):
@@ -178,8 +187,12 @@ avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
 observation_AI = tf.reshape(observation_AI, (1, -1))
 observation_HM = tf.reshape(observation_HM, (1, -1))
 
+from datetime import datetime
+
+
 # Training Loop
 for epoch in range(epochs):
+    t = datetime.now()
     sum_return_sparse, sum_return_shaped, sum_return_env, sum_length, num_episodes = 0, 0, 0, 0, 0
 
     for t in range(steps_per_epoch):
@@ -242,3 +255,5 @@ for epoch in range(epochs):
     avg_return_shaped.append(sum_return_shaped / num_episodes)
     avg_return_sparse.append(sum_return_sparse / num_episodes)
     avg_return_env.append(sum_return_env / num_episodes)
+
+    print('TIME ELAPSED on EPOC: ', (datetime.now() - t).microseconds)
