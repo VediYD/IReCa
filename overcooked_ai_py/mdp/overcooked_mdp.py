@@ -36,9 +36,9 @@ class Recipe:
             )
         # Some basic argument verification
         if (
-            not ingredients
-            or not hasattr(ingredients, "__iter__")
-            or len(ingredients) == 0
+                not ingredients
+                or not hasattr(ingredients, "__iter__")
+                or len(ingredients) == 0
         ):
             raise ValueError(
                 "Invalid input recipe. Must be ingredients iterable with non-zero length"
@@ -119,7 +119,7 @@ class Recipe:
     def _compute_all_recipes(cls):
         for i in range(cls.MAX_NUM_INGREDIENTS):
             for ingredient_list in itertools.combinations_with_replacement(
-                cls.ALL_INGREDIENTS, i + 1
+                    cls.ALL_INGREDIENTS, i + 1
             ):
                 cls(ingredient_list)
 
@@ -155,8 +155,8 @@ class Recipe:
                 ]
             )
             return (
-                self._tomato_value * num_tomatoes
-                + self._onion_value * num_onions
+                    self._tomato_value * num_tomatoes
+                    + self._onion_value * num_onions
             )
         return 20
 
@@ -182,8 +182,8 @@ class Recipe:
                 ]
             )
             return (
-                self._onion_time * num_onions
-                + self._tomato_time * num_tomatoes
+                    self._onion_time * num_onions
+                    + self._tomato_time * num_tomatoes
             )
         return 20
 
@@ -237,19 +237,19 @@ class Recipe:
 
         # Mutual Exclusion
         if (
-            "tomato_time" in conf
-            and not "onion_time" in conf
-            or "onion_time" in conf
-            and not "tomato_time" in conf
+                "tomato_time" in conf
+                and not "onion_time" in conf
+                or "onion_time" in conf
+                and not "tomato_time" in conf
         ):
             raise ValueError(
                 "Must specify both 'onion_time' and 'tomato_time'"
             )
         if (
-            "tomato_value" in conf
-            and not "onion_value" in conf
-            or "onion_value" in conf
-            and not "tomato_value" in conf
+                "tomato_value" in conf
+                and not "onion_value" in conf
+                or "onion_value" in conf
+                and not "tomato_value" in conf
         ):
             raise ValueError(
                 "Must specify both 'onion_value' and 'tomato_value'"
@@ -337,13 +337,13 @@ class Recipe:
 
     @classmethod
     def generate_random_recipes(
-        cls,
-        n=1,
-        min_size=2,
-        max_size=3,
-        ingredients=None,
-        recipes=None,
-        unique=True,
+            cls,
+            n=1,
+            min_size=2,
+            max_size=3,
+            ingredients=None,
+            recipes=None,
+            unique=True,
     ):
         """
         n (int): how many recipes generate
@@ -410,9 +410,9 @@ class ObjectState(object):
 
     def __eq__(self, other):
         return (
-            isinstance(other, ObjectState)
-            and self.name == other.name
-            and self.position == other.position
+                isinstance(other, ObjectState)
+                and self.name == other.name
+                and self.position == other.position
         )
 
     def __hash__(self):
@@ -432,12 +432,12 @@ class ObjectState(object):
 
 class SoupState(ObjectState):
     def __init__(
-        self,
-        position,
-        ingredients=[],
-        cooking_tick=-1,
-        cook_time=None,
-        **kwargs
+            self,
+            position,
+            ingredients=[],
+            cooking_tick=-1,
+            cook_time=None,
+            **kwargs
     ):
         """
         Represents a soup object. An object becomes a soup the instant it is placed in a pot. The
@@ -457,18 +457,18 @@ class SoupState(ObjectState):
 
     def __eq__(self, other):
         return (
-            isinstance(other, SoupState)
-            and self.name == other.name
-            and self.position == other.position
-            and self._cooking_tick == other._cooking_tick
-            and all(
-                [
-                    this_i == other_i
-                    for this_i, other_i in zip(
-                        self._ingredients, other._ingredients
-                    )
-                ]
+                isinstance(other, SoupState)
+                and self.name == other.name
+                and self.position == other.position
+                and self._cooking_tick == other._cooking_tick
+                and all(
+            [
+                this_i == other_i
+                for this_i, other_i in zip(
+                self._ingredients, other._ingredients
             )
+            ]
+        )
         )
 
     def __hash__(self):
@@ -546,16 +546,16 @@ class SoupState(ObjectState):
     @property
     def is_full(self):
         return (
-            not self.is_idle
-            or len(self.ingredients) == Recipe.MAX_NUM_INGREDIENTS
+                not self.is_idle
+                or len(self.ingredients) == Recipe.MAX_NUM_INGREDIENTS
         )
 
     def is_valid(self):
         if not all(
-            [
-                ingredient.position == self.position
-                for ingredient in self._ingredients
-            ]
+                [
+                    ingredient.position == self.position
+                    for ingredient in self._ingredients
+                ]
         ):
             return False
         if len(self.ingredients) > Recipe.MAX_NUM_INGREDIENTS:
@@ -664,13 +664,13 @@ class SoupState(ObjectState):
 
     @classmethod
     def get_soup(
-        cls,
-        position,
-        num_onions=1,
-        num_tomatoes=0,
-        cooking_tick=-1,
-        finished=False,
-        **kwargs
+            cls,
+            position,
+            num_onions=1,
+            num_tomatoes=0,
+            cooking_tick=-1,
+            finished=False,
+            **kwargs
     ):
         if num_onions < 0 or num_tomatoes < 0:
             raise ValueError("Number of active ingredients must be positive")
@@ -749,10 +749,10 @@ class PlayerState(object):
 
     def __eq__(self, other):
         return (
-            isinstance(other, PlayerState)
-            and self.position == other.position
-            and self.orientation == other.orientation
-            and self.held_object == other.held_object
+                isinstance(other, PlayerState)
+                and self.position == other.position
+                and self.orientation == other.orientation
+                and self.held_object == other.held_object
         )
 
     def __hash__(self):
@@ -785,13 +785,13 @@ class OvercookedState(object):
     """A state in OvercookedGridworld."""
 
     def __init__(
-        self,
-        players,
-        objects,
-        bonus_orders=[],
-        all_orders=[],
-        timestep=0,
-        **kwargs
+            self,
+            players,
+            objects,
+            bonus_orders=[],
+            all_orders=[],
+            timestep=0,
+            **kwargs
     ):
         """
         players (list(PlayerState)): Currently active PlayerStates (index corresponds to number)
@@ -920,7 +920,7 @@ class OvercookedState(object):
 
     @classmethod
     def from_players_pos_and_or(
-        cls, players_pos_and_or, bonus_orders=[], all_orders=[]
+            cls, players_pos_and_or, bonus_orders=[], all_orders=[]
     ):
         """
         Make a dummy OvercookedState with no objects based on the passed in player
@@ -938,7 +938,7 @@ class OvercookedState(object):
 
     @classmethod
     def from_player_positions(
-        cls, player_positions, bonus_orders=[], all_orders=[]
+            cls, player_positions, bonus_orders=[], all_orders=[]
     ):
         """
         Make a dummy OvercookedState with no objects and with players facing
@@ -960,21 +960,21 @@ class OvercookedState(object):
 
     def time_independent_equal(self, other):
         order_lists_equal = (
-            self.all_orders == other.all_orders
-            and self.bonus_orders == other.bonus_orders
+                self.all_orders == other.all_orders
+                and self.bonus_orders == other.bonus_orders
         )
 
         return (
-            isinstance(other, OvercookedState)
-            and self.players == other.players
-            and set(self.objects.items()) == set(other.objects.items())
-            and order_lists_equal
+                isinstance(other, OvercookedState)
+                and self.players == other.players
+                and set(self.objects.items()) == set(other.objects.items())
+                and order_lists_equal
         )
 
     def __eq__(self, other):
         return (
-            self.time_independent_equal(other)
-            and self.timestep == other.timestep
+                self.time_independent_equal(other)
+                and self.timestep == other.timestep
         )
 
     def __hash__(self):
@@ -1088,18 +1088,18 @@ class OvercookedGridworld(object):
     #########################
 
     def __init__(
-        self,
-        terrain,
-        start_player_positions,
-        start_bonus_orders=[],
-        rew_shaping_params=None,
-        layout_name="unnamed_layout",
-        start_all_orders=[],
-        num_items_for_soup=3,
-        order_bonus=2,
-        start_state=None,
-        old_dynamics=True, # was initialized as False
-        **kwargs
+            self,
+            terrain,
+            start_player_positions,
+            start_bonus_orders=[],
+            rew_shaping_params=None,
+            layout_name="unnamed_layout",
+            start_all_orders=[],
+            num_items_for_soup=3,
+            order_bonus=2,
+            start_state=None,
+            old_dynamics=True,  # was initialized as False
+            **kwargs
     ):
         """
         terrain: a matrix of strings that encode the MDP layout
@@ -1173,7 +1173,7 @@ class OvercookedGridworld(object):
 
     @staticmethod
     def from_grid(
-        layout_grid, base_layout_params={}, params_to_overwrite={}, debug=False
+            layout_grid, base_layout_params={}, params_to_overwrite={}, debug=False
     ):
         """
         Returns instance of OvercookedGridworld with terrain and starting
@@ -1198,7 +1198,7 @@ class OvercookedGridworld(object):
 
                     # -1 is to account for fact that player indexing starts from 1 rather than 0
                     assert (
-                        player_positions[int(c) - 1] is None
+                            player_positions[int(c) - 1] is None
                     ), "Duplicate player in grid"
                     player_positions[int(c) - 1] = (x, y)
 
@@ -1222,7 +1222,7 @@ class OvercookedGridworld(object):
         return OvercookedGridworld(**mdp_config)
 
     def _configure_recipes(
-        self, start_all_orders, num_items_for_soup, **kwargs
+            self, start_all_orders, num_items_for_soup, **kwargs
     ):
         self.recipe_config = {
             "num_items_for_soup": num_items_for_soup,
@@ -1237,12 +1237,12 @@ class OvercookedGridworld(object):
 
     def __eq__(self, other):
         return (
-            np.array_equal(self.terrain_mtx, other.terrain_mtx)
-            and self.start_player_positions == other.start_player_positions
-            and self.start_bonus_orders == other.start_bonus_orders
-            and self.start_all_orders == other.start_all_orders
-            and self.reward_shaping_params == other.reward_shaping_params
-            and self.layout_name == other.layout_name
+                np.array_equal(self.terrain_mtx, other.terrain_mtx)
+                and self.start_player_positions == other.start_player_positions
+                and self.start_bonus_orders == other.start_bonus_orders
+                and self.start_all_orders == other.start_all_orders
+                and self.reward_shaping_params == other.reward_shaping_params
+                and self.layout_name == other.layout_name
         )
 
     def copy(self):
@@ -1289,7 +1289,7 @@ class OvercookedGridworld(object):
 
     def _check_action(self, state, joint_action):
         for p_action, p_legal_actions in zip(
-            joint_action, self.get_actions(state)
+                joint_action, self.get_actions(state)
         ):
             if p_action not in p_legal_actions:
                 raise ValueError("Invalid action")
@@ -1305,7 +1305,7 @@ class OvercookedGridworld(object):
         return start_state
 
     def get_random_start_state_fn(
-        self, random_start_pos=False, rnd_obj_prob_thresh=0.0
+            self, random_start_pos=False, rnd_obj_prob_thresh=0.0
     ):
         def start_state_fn():
             if random_start_pos:
@@ -1383,10 +1383,10 @@ class OvercookedGridworld(object):
         shaped reward is given only for completion of subgoals
         (not soup deliveries).
         """
-        events_infos = {event: [False] * self.num_players for event in EVENT_TYPES} # 初始化，全都 False
+        events_infos = {event: [False] * self.num_players for event in EVENT_TYPES}  # 初始化，全都 False
         assert not self.is_terminal(state), "Trying to find successor of a terminal state: {}".format(state)
 
-        for action, action_set in zip(joint_action, self.get_actions(state)): # 检查一下 action 是不是标准定义的六个 action 之一
+        for action, action_set in zip(joint_action, self.get_actions(state)):  # 检查一下 action 是不是标准定义的六个 action 之一
             if action not in action_set:
                 raise ValueError("Illegal action %s in state %s" % (action, state))
 
@@ -1424,9 +1424,10 @@ class OvercookedGridworld(object):
         """
         pot_states = self.get_pot_states(new_state)
         # We divide reward by agent to keep track of who contributed
-        sparse_reward, shaped_reward = ([0] * self.num_players, [0] * self.num_players,) # 初始化所有 agent 的 reward 为 0 ！
+        sparse_reward, shaped_reward = ([0] * self.num_players, [0] * self.num_players,)  # 初始化所有 agent 的 reward 为 0 ！
 
-        for player_idx, (player, action) in enumerate(zip(new_state.players, joint_action)): # enumerate 会创建一个枚举器，这个枚举器，每次迭代的时候给一个元组 (player_idx, (player, action))
+        for player_idx, (player, action) in enumerate(zip(new_state.players,
+                                                          joint_action)):  # enumerate 会创建一个枚举器，这个枚举器，每次迭代的时候给一个元组 (player_idx, (player, action))
             if action != Action.INTERACT:
                 continue
 
@@ -1490,16 +1491,16 @@ class OvercookedGridworld(object):
             elif terrain_type == "P" and not player.has_object():
                 # An interact action will only start cooking the soup if we are using the new dynamics
                 if (
-                    not self.old_dynamics
-                    and self.soup_to_be_cooked_at_location(new_state, i_pos)
+                        not self.old_dynamics
+                        and self.soup_to_be_cooked_at_location(new_state, i_pos)
                 ):
                     soup = new_state.get_object(i_pos)
                     soup.begin_cooking()
 
             elif terrain_type == "P" and player.has_object():
                 if (
-                    player.get_object().name == "dish"
-                    and self.soup_ready_at_location(new_state, i_pos)
+                        player.get_object().name == "dish"
+                        and self.soup_ready_at_location(new_state, i_pos)
                 ):
                     self.log_object_pickup(events_infos, new_state, "soup", pot_states, player_idx)
 
@@ -1548,12 +1549,12 @@ class OvercookedGridworld(object):
         return sparse_reward, shaped_reward
 
     def get_recipe_value(
-        self,
-        state,
-        recipe,
-        discounted=False,
-        base_recipe=None,
-        potential_params={},
+            self,
+            state,
+            recipe,
+            discounted=False,
+            base_recipe=None,
+            potential_params={},
     ):
         """
         Return the reward the player should receive for delivering this recipe
@@ -1591,10 +1592,10 @@ class OvercookedGridworld(object):
             )
 
             return (
-                gamma**recipe.time
-                * gamma ** (pot_onion_steps * n_onions)
-                * gamma ** (pot_tomato_steps * n_tomatoes)
-                * self.get_recipe_value(state, recipe, discounted=False)
+                    gamma ** recipe.time
+                    * gamma ** (pot_onion_steps * n_onions)
+                    * gamma ** (pot_tomato_steps * n_tomatoes)
+                    * self.get_recipe_value(state, recipe, discounted=False)
             )
 
     def deliver_soup(self, state, player, soup):
@@ -1603,7 +1604,7 @@ class OvercookedGridworld(object):
         or if the type of the delivered soup matches the next order.
         """
         assert (
-            soup.name == "soup"
+                soup.name == "soup"
         ), "Tried to deliver something that wasn't soup"
         assert soup.is_ready, "Tried to deliever soup that isn't ready"
         player.remove_object()
@@ -1619,12 +1620,12 @@ class OvercookedGridworld(object):
             state.players, joint_action
         )
         for player_state, new_pos, new_o in zip(
-            state.players, new_positions, new_orientations
+                state.players, new_positions, new_orientations
         ):
             player_state.update_pos_and_or(new_pos, new_o)
 
     def compute_new_positions_and_orientations(
-        self, old_player_states, joint_action
+            self, old_player_states, joint_action
     ):
         """Compute new positions and orientations ignoring collisions"""
         new_positions, new_orientations = list(
@@ -1663,9 +1664,9 @@ class OvercookedGridworld(object):
             if obj.name == "soup":
                 # automatically starts cooking when the pot has 3 ingredients
                 if self.old_dynamics and (
-                    not obj.is_cooking
-                    and not obj.is_ready
-                    and len(obj.ingredients) == 3
+                        not obj.is_cooking
+                        and not obj.is_ready
+                        and len(obj.ingredients) == 3
                 ):
                     obj.begin_cooking()
                 if obj.is_cooking:
@@ -1730,7 +1731,7 @@ class OvercookedGridworld(object):
 
         valid_joint_player_states = []
         for players_pos_and_orientations in itertools.product(
-            valid_player_states, repeat=self.num_players
+                valid_player_states, repeat=self.num_players
         ):
             joint_position = [
                 plyer_pos_and_or[0]
@@ -1792,7 +1793,7 @@ class OvercookedGridworld(object):
             else:
                 soup = state.get_object(pot_pos)
                 assert soup.name == "soup", (
-                    "soup at " + pot_pos + " is not a soup but a " + soup.name
+                        "soup at " + pot_pos + " is not a soup but a " + soup.name
                 )
                 if soup.is_ready:
                     pots_states_dict["ready"].append(pot_pos)
@@ -1843,9 +1844,9 @@ class OvercookedGridworld(object):
 
     def get_full_pots(self, pot_states):
         return (
-            self.get_cooking_pots(pot_states)
-            + self.get_ready_pots(pot_states)
-            + self.get_full_but_not_cooking_pots(pot_states)
+                self.get_cooking_pots(pot_states)
+                + self.get_ready_pots(pot_states)
+                + self.get_full_but_not_cooking_pots(pot_states)
         )
 
     def get_partially_full_pots(self, pot_states):
@@ -1870,10 +1871,10 @@ class OvercookedGridworld(object):
             return False
         obj = state.get_object(pos)
         return (
-            obj.name == "soup"
-            and not obj.is_cooking
-            and not obj.is_ready
-            and len(obj.ingredients) > 0
+                obj.name == "soup"
+                and not obj.is_cooking
+                and not obj.is_ready
+                and len(obj.ingredients) > 0
         )
 
     def _check_valid_state(self, state):
@@ -1896,7 +1897,7 @@ class OvercookedGridworld(object):
             if player_state.held_object is not None:
                 all_objects.append(player_state.held_object)
                 assert (
-                    player_state.held_object.position == player_state.position
+                        player_state.held_object.position == player_state.position
                 )
 
         for obj_pos, obj_state in state.objects.items():
@@ -1925,12 +1926,12 @@ class OvercookedGridworld(object):
         for free_counter in free_counters:
             goals = mlam.motion_planner.motion_goals_for_pos[free_counter]
             if any(
-                [
-                    mlam.motion_planner.is_valid_motion_start_goal_pair(
-                        one_player.pos_and_or, goal
-                    )
-                    for goal in goals
-                ]
+                    [
+                        mlam.motion_planner.is_valid_motion_start_goal_pair(
+                            one_player.pos_and_or, goal
+                        )
+                        for goal in goals
+                    ]
             ) and any(
                 [
                     mlam.motion_planner.is_valid_motion_start_goal_pair(
@@ -1943,7 +1944,7 @@ class OvercookedGridworld(object):
         return free_counters_valid_for_both
 
     def _get_optimal_possible_recipe(
-        self, state, recipe, discounted, potential_params, return_value
+            self, state, recipe, discounted, potential_params, return_value
     ):
         """
         Traverse the recipe-space graph using DFS to find the best possible recipe that can be made
@@ -1985,12 +1986,12 @@ class OvercookedGridworld(object):
         return best_recipe
 
     def get_optimal_possible_recipe(
-        self,
-        state,
-        recipe,
-        discounted=False,
-        potential_params={},
-        return_value=False,
+            self,
+            state,
+            recipe,
+            discounted=False,
+            potential_params={},
+            return_value=False,
     ):
         """
         Return the best possible recipe that can be made starting with ingredients in `recipe`
@@ -1999,7 +2000,7 @@ class OvercookedGridworld(object):
         flushed if order dynamics are introduced
         """
         cache_valid = (
-            not discounted or self._prev_potential_params == potential_params
+                not discounted or self._prev_potential_params == potential_params
         )
         if not cache_valid:
             if discounted:
@@ -2071,16 +2072,16 @@ class OvercookedGridworld(object):
         ), "Invalid character in grid"
         assert all_elements.count("1") == 1, "'1' must be present exactly once"
         assert (
-            all_elements.count("D") >= 1
+                all_elements.count("D") >= 1
         ), "'D' must be present at least once"
         assert (
-            all_elements.count("S") >= 1
+                all_elements.count("S") >= 1
         ), "'S' must be present at least once"
         assert (
-            all_elements.count("P") >= 1
+                all_elements.count("P") >= 1
         ), "'P' must be present at least once"
         assert (
-            all_elements.count("O") >= 1 or all_elements.count("T") >= 1
+                all_elements.count("O") >= 1 or all_elements.count("T") >= 1
         ), "'O' or 'T' must be present at least once"
 
     ################################
@@ -2088,7 +2089,7 @@ class OvercookedGridworld(object):
     ################################
 
     def log_object_potting(
-        self, events_infos, state, old_soup, new_soup, obj_name, player_index
+            self, events_infos, state, old_soup, new_soup, obj_name, player_index
     ):
         """Player added an ingredient to a pot"""
         obj_pickup_key = "potting_" + obj_name
@@ -2109,7 +2110,7 @@ class OvercookedGridworld(object):
                 events_infos[potting_key][player_index] = True
 
     def log_object_pickup(
-        self, events_infos, state, obj_name, pot_states, player_index
+            self, events_infos, state, obj_name, pot_states, player_index
     ):
         """Player picked an object up from a counter or a dispenser"""
         obj_pickup_key = obj_name + "_pickup"
@@ -2128,7 +2129,7 @@ class OvercookedGridworld(object):
                 events_infos[obj_useful_key][player_index] = True
 
     def log_object_drop(
-        self, events_infos, state, obj_name, pot_states, player_index
+            self, events_infos, state, obj_name, pot_states, player_index
     ):
         """Player dropped the object on a counter"""
         obj_drop_key = obj_name + "_drop"
@@ -2184,8 +2185,8 @@ class OvercookedGridworld(object):
         all_non_full = len(self.get_full_pots(pot_states)) == 0
         other_player = state.players[1 - player_index]
         other_player_holding_onion = (
-            other_player.has_object()
-            and other_player.get_object().name == "onion"
+                other_player.has_object()
+                and other_player.get_object().name == "onion"
         )
         return all_non_full and not other_player_holding_onion
 
@@ -2200,8 +2201,8 @@ class OvercookedGridworld(object):
         all_pots_full = self.num_pots == len(self.get_full_pots(pot_states))
         other_player = state.players[1 - player_index]
         other_player_has_dish = (
-            other_player.has_object()
-            and other_player.get_object().name == "dish"
+                other_player.has_object()
+                and other_player.get_object().name == "dish"
         )
         return not (all_pots_full and not other_player_has_dish)
 
@@ -2217,8 +2218,8 @@ class OvercookedGridworld(object):
         all_pots_full = len(self.get_full_pots(pot_states)) == self.num_pots
         other_player = state.players[1 - player_index]
         other_player_holding_dish = (
-            other_player.has_object()
-            and other_player.get_object().name == "dish"
+                other_player.has_object()
+                and other_player.get_object().name == "dish"
         )
         return all_pots_full and not other_player_holding_dish
 
@@ -2352,11 +2353,11 @@ class OvercookedGridworld(object):
         return np.array(list(self.shape) + [26])
 
     def lossless_state_encoding(
-        self, overcooked_state, horizon=400, debug=False
+            self, overcooked_state, horizon=400, debug=False
     ):
         """Featurizes a OvercookedState object into a stack of boolean masks that are easily readable by a CNN"""
         assert (
-            self.num_players == 2
+                self.num_players == 2
         ), "Functionality has to be added to support encondings for > 2 players"
         assert type(debug) is bool
         base_map_features = [
@@ -2390,24 +2391,24 @@ class OvercookedGridworld(object):
             # Ensure that primary_agent_idx layers are ordered before other_agent_idx layers
             other_agent_idx = 1 - primary_agent_idx
             ordered_player_features = [
-                "player_{}_loc".format(primary_agent_idx),
-                "player_{}_loc".format(other_agent_idx),
-            ] + [
-                "player_{}_orientation_{}".format(
-                    i, Direction.DIRECTION_TO_INDEX[d]
-                )
-                for i, d in itertools.product(
+                                          "player_{}_loc".format(primary_agent_idx),
+                                          "player_{}_loc".format(other_agent_idx),
+                                      ] + [
+                                          "player_{}_orientation_{}".format(
+                                              i, Direction.DIRECTION_TO_INDEX[d]
+                                          )
+                                          for i, d in itertools.product(
                     [primary_agent_idx, other_agent_idx],
                     Direction.ALL_DIRECTIONS,
                 )
-            ]
+                                      ]
 
             # LAYERS = ordered_player_features + base_map_features + variable_map_features
             LAYERS = (
-                ordered_player_features
-                + base_map_features
-                + variable_map_features
-                + urgency_features
+                    ordered_player_features
+                    + base_map_features
+                    + variable_map_features
+                    + urgency_features
             )
             state_mask_dict = {k: np.zeros(self.shape) for k in LAYERS}
 
@@ -2541,7 +2542,7 @@ class OvercookedGridworld(object):
         num_pot_features = 10
         base_features = 28
         total_features = self.num_players * (
-            num_pots * num_pot_features + base_features
+                num_pots * num_pot_features + base_features
         )
         return (total_features,)
 
@@ -2801,7 +2802,7 @@ class OvercookedGridworld(object):
 
             # Adjacent features info
             for direction, pos_and_feat in enumerate(
-                self.get_adjacent_features(player)
+                    self.get_adjacent_features(player)
             ):
                 _, feat = pos_and_feat
                 all_features["p{}_wall_{}".format(i, direction)] = (
@@ -2932,7 +2933,7 @@ class OvercookedGridworld(object):
             phi(state), the potential of the state
         """
         if not hasattr(Recipe, "_tomato_value") or not hasattr(
-            Recipe, "_onion_value"
+                Recipe, "_onion_value"
         ):
             raise ValueError(
                 "Potential function requires Recipe onion and tomato values to work properly"
@@ -3000,14 +3001,14 @@ class OvercookedGridworld(object):
         ]
         non_idle_soup_vals = {
             soup: gamma
-            ** (
-                potential_params["max_delivery_steps"]
-                + max(
-                    potential_params["max_pickup_steps"],
-                    soup.cook_time - soup._cooking_tick,
-                )
-            )
-            * max(self.get_recipe_value(state, soup.recipe), 1)
+                  ** (
+                          potential_params["max_delivery_steps"]
+                          + max(
+                      potential_params["max_pickup_steps"],
+                      soup.cook_time - soup._cooking_tick,
+                  )
+                  )
+                  * max(self.get_recipe_value(state, soup.recipe), 1)
             for soup in cooking_soups + done_soups
         }
 
@@ -3027,7 +3028,7 @@ class OvercookedGridworld(object):
             player
             for player in state.players
             if player.has_object()
-            and player.get_object().name == Recipe.TOMATO
+               and player.get_object().name == Recipe.TOMATO
         ]
         players_holding_onions = [
             player
@@ -3120,8 +3121,8 @@ class OvercookedGridworld(object):
 
             # Base discount for steps 3-4
             discount = gamma ** (
-                max(potential_params["max_pickup_steps"], opt_recipe.time)
-                + potential_params["max_delivery_steps"]
+                    max(potential_params["max_pickup_steps"], opt_recipe.time)
+                    + potential_params["max_delivery_steps"]
             )
 
             # Add a multiplicative discount for each needed ingredient (this has the effect of giving more award to soups
@@ -3188,13 +3189,13 @@ class OvercookedGridworld(object):
             )
             is_useful = int(dist < np.inf)
             discount = (
-                gamma
-                ** (
-                    min(potential_params["pot_tomato_steps"], dist)
-                    + potential_params["max_pickup_steps"]
-                    + potential_params["max_delivery_steps"]
-                )
-                * is_useful
+                    gamma
+                    ** (
+                            min(potential_params["pot_tomato_steps"], dist)
+                            + potential_params["max_pickup_steps"]
+                            + potential_params["max_delivery_steps"]
+                    )
+                    * is_useful
             )
             potential += discount * potential_params["tomato_value"]
 
@@ -3205,13 +3206,13 @@ class OvercookedGridworld(object):
             )
             is_useful = int(dist < np.inf)
             discount = (
-                gamma
-                ** (
-                    min(potential_params["pot_onion_steps"], dist)
-                    + potential_params["max_pickup_steps"]
-                    + potential_params["max_delivery_steps"]
-                )
-                * is_useful
+                    gamma
+                    ** (
+                            min(potential_params["pot_onion_steps"], dist)
+                            + potential_params["max_pickup_steps"]
+                            + potential_params["max_delivery_steps"]
+                    )
+                    * is_useful
             )
             potential += discount * potential_params["onion_value"]
 

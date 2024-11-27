@@ -6,7 +6,7 @@ import gym
 import gymnasium
 import numpy as np
 import pygame
-import tqdm     # tqdm是一个用于显示循环进度条的非常有用的库，特别是在处理长迭代过程时。
+import tqdm  # tqdm是一个用于显示循环进度条的非常有用的库，特别是在处理长迭代过程时。
 
 from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_mdp import (
@@ -33,7 +33,6 @@ MAX_HORIZON = 1e10
 from copy import deepcopy
 
 
-
 class OvercookedEnv(object):
     """
     An environment wrapper for the OvercookedGridworld Markov Decision Process.
@@ -50,14 +49,14 @@ class OvercookedEnv(object):
     #########################
 
     def __init__(
-        self,
-        mdp_generator_fn,
-        start_state_fn=None,
-        horizon=MAX_HORIZON,
-        mlam_params=NO_COUNTERS_PARAMS,
-        info_level=0,
-        num_mdp=1,
-        initial_info={},
+            self,
+            mdp_generator_fn,
+            start_state_fn=None,
+            horizon=MAX_HORIZON,
+            mlam_params=NO_COUNTERS_PARAMS,
+            info_level=0,
+            num_mdp=1,
+            initial_info={},
     ):
         """
         mdp_generator_fn (callable):    A no-argument function that returns a OvercookedGridworld instance (mdp_generator_fn (可调用)：无参数函数，返回 OvercookedGridworld 实例)
@@ -119,12 +118,12 @@ class OvercookedEnv(object):
 
     @staticmethod
     def from_mdp(
-        mdp,
-        start_state_fn=None,
-        horizon=MAX_HORIZON,
-        mlam_params=NO_COUNTERS_PARAMS,
-        info_level=1,
-        num_mdp=None,
+            mdp,
+            start_state_fn=None,
+            horizon=MAX_HORIZON,
+            mlam_params=NO_COUNTERS_PARAMS,
+            info_level=1,
+            num_mdp=None,
     ):
         """
         Create an OvercookedEnv directly from a OvercookedGridworld mdp rather than a mdp generating function.
@@ -189,7 +188,7 @@ class OvercookedEnv(object):
         self.state = old_state
 
     def print_state_transition(
-        self, a_t, r_t, env_info, fname=None, display_phi=False
+            self, a_t, r_t, env_info, fname=None, display_phi=False
     ):
         """
         Terminal graphics visualization of a state transition.
@@ -211,12 +210,12 @@ class OvercookedEnv(object):
 
         if display_phi:
             state_potential_str = (
-                "\nState potential = " + str(env_info["phi_s_prime"]) + "\t"
+                    "\nState potential = " + str(env_info["phi_s_prime"]) + "\t"
             )
             potential_diff_str = (
-                "Δ potential = "
-                + str(0.99 * env_info["phi_s_prime"] - env_info["phi_s"])
-                + "\n"
+                    "Δ potential = "
+                    + str(0.99 * env_info["phi_s_prime"] - env_info["phi_s"])
+                    + "\n"
             )  # Assuming gamma 0.99
         else:
             state_potential_str = ""
@@ -270,7 +269,7 @@ class OvercookedEnv(object):
         timestep_sparse_reward = sum(mdp_infos["sparse_reward_by_agent"])
         timestep_shaped_reward = sum(mdp_infos["shaped_reward_by_agent"])
 
-        return (next_state, timestep_sparse_reward, timestep_shaped_reward, done, env_info)
+        return next_state, timestep_sparse_reward, timestep_shaped_reward, done, env_info
 
     def dummy_step(self, joint_action, joint_agent_action_info=None, display_phi=False):
         """Performs a joint action, updating the environment state and providing a reward.
@@ -363,26 +362,21 @@ class OvercookedEnv(object):
 
     def _prepare_info_dict(self, joint_agent_action_info, mdp_infos):
         """
-        The normal timestep info dict will contain infos specifc to each agent's action taken,
+        The normal timestep info dict will contain infos specific to each agent's action taken,
         and reward shaping information.
         """
         # Get the agent action info, that could contain info about action probs, or other
         # custom user defined information
-        env_info = {
-            "agent_infos": [
-                joint_agent_action_info[agent_idx]
-                for agent_idx in range(self.mdp.num_players)
-            ]
-        }
+        env_info = {"agent_infos": [
+            joint_agent_action_info[agent_idx]
+            for agent_idx in range(self.mdp.num_players)
+        ], "sparse_r_by_agent": mdp_infos["sparse_reward_by_agent"],
+            "shaped_r_by_agent": mdp_infos["shaped_reward_by_agent"], "phi_s": (
+                mdp_infos["phi_s"] if "phi_s" in mdp_infos else None
+            ), "phi_s_prime": (
+                mdp_infos["phi_s_prime"] if "phi_s_prime" in mdp_infos else None
+            )}
         # TODO: This can be further simplified by having all the mdp_infos copied over to the env_infos automatically
-        env_info["sparse_r_by_agent"] = mdp_infos["sparse_reward_by_agent"]
-        env_info["shaped_r_by_agent"] = mdp_infos["shaped_reward_by_agent"]
-        env_info["phi_s"] = (
-            mdp_infos["phi_s"] if "phi_s" in mdp_infos else None
-        )
-        env_info["phi_s_prime"] = (
-            mdp_infos["phi_s_prime"] if "phi_s_prime" in mdp_infos else None
-        )
         return env_info
 
     def _add_episode_info(self, env_info):
@@ -442,19 +436,19 @@ class OvercookedEnv(object):
         return successor_state, done
 
     def run_agents(
-        self,
-        agent_pair,
-        include_final_state=False,
-        display=False,
-        dir=None,
-        display_phi=False,
-        display_until=np.Inf,
+            self,
+            agent_pair,
+            include_final_state=False,
+            display=False,
+            dir=None,
+            display_phi=False,
+            display_until=np.Inf,
     ):
         """
         Trajectory returned will a list of state-action pairs (s_t, joint_a_t, r_t, done_t, info_t).
         """
         assert (
-            self.state.timestep == 0
+                self.state.timestep == 0
         ), "Did not reset environment before running agents"
         trajectory = []
         done = False
@@ -502,17 +496,17 @@ class OvercookedEnv(object):
         )
 
     def get_rollouts(
-        self,
-        agent_pair,
-        num_games,
-        display=False,
-        dir=None,
-        final_state=False,
-        display_phi=False,
-        display_until=np.Inf,
-        metadata_fn=None,
-        metadata_info_fn=None,
-        info=True,
+            self,
+            agent_pair,
+            num_games,
+            display=False,
+            dir=None,
+            final_state=False,
+            display_phi=False,
+            display_until=np.Inf,
+            metadata_fn=None,
+            metadata_info_fn=None,
+            info=True,
     ):
         """
         Simulate `num_games` number rollouts with the current agent_pair and returns processed
@@ -618,7 +612,7 @@ class OvercookedEnv(object):
     @staticmethod
     def _get_discounted_rewards_with_horizon(rewards_matrix, gamma, horizon):
         rewards_matrix = np.array(rewards_matrix)
-        discount_array = [gamma**i for i in range(horizon)]
+        discount_array = [gamma ** i for i in range(horizon)]
         rewards_matrix = rewards_matrix[:, :horizon]
         discounted_rews = np.sum(rewards_matrix * discount_array, axis=1)
         return discounted_rews
@@ -665,12 +659,12 @@ class OvercookedEnv(object):
             stuck_matrix.append([])
             obs = trajectories["ep_states"][traj_idx]
             for traj_timestep in range(
-                stuck_time, trajectories["ep_lengths"][traj_idx]
+                    stuck_time, trajectories["ep_lengths"][traj_idx]
             ):
                 if traj_timestep >= stuck_time:
                     recent_states = obs[
-                        traj_timestep - stuck_time : traj_timestep + 1
-                    ]
+                                    traj_timestep - stuck_time: traj_timestep + 1
+                                    ]
                     recent_player_pos_and_or = [
                         s.players[agent_idx].pos_and_or for s in recent_states
                     ]
@@ -683,134 +677,6 @@ class OvercookedEnv(object):
                 else:
                     stuck_matrix[traj_idx].append(False)
         return stuck_matrix
-
-
-# # -------- pettingzoo ----------------------------------------------------------------------------------
-
-# from pettingzoo.utils.env import ParallelEnv
-
-# from overcooked_ai_py.agents.agent import AgentPair
-
-# # 这个类通过封装基础环境 base_env 和代理对 agents，为每个代理创建了独立的观察和动作空间，并实现了 step 方法，以支持并行环境的操作
-# class OvercookedEnvPettingZoo(ParallelEnv): 
-#     def __init__(self, base_env, agents):
-#         """
-#         base_env: OvercookedEnv
-#         agents: AgentPair
-
-#         Example creating a PettingZoo env from a base_env:
-
-#         mdp = OvercookedGridworld.from_layout_name("asymmetric_advantages")
-#         base_env = OvercookedEnv.from_mdp(mdp, horizon=500)
-#         agent_pair = load_agent_pair("path/to/checkpoint", "ppo", "ppo")
-#         env = OvercookedEnvPettingZoo(base_env, agent_pair)
-
-#         """
-#         # we need agent-dependent observation space, and the best way to do it is just to include an agentPair
-#         assert isinstance(
-#             agents, AgentPair
-#         ), "agents must be an AgentPair object"
-
-#         self.agents = ["agent_0", "agent_1"]
-#         self.possible_agents = ["agent_0", "agent_1"]
-#         self.agent_map = {"agent_0": agents.a0, "agent_1": agents.a1}
-#         self.base_env = base_env
-#         self.observation_spaces = {                                         # self.observation_spaces：为每个代理调用
-#             agent: self.observation_space(agent) for agent in self.agents   # self.observation_space 方法生成观察空间
-#         }
-#         self.action_spaces = {                                              # self.action_spaces：为每个代理生成离散的动作空间，其大小为所有可能动作的数量
-#             agent: gymnasium.spaces.Discrete(len(Action.ALL_ACTIONS))
-#             for agent in self.agents
-#         }
-#         # this is the AgentPair object
-#         self.reset()
-
-#     import functools
-
-#     # we want to return the same space object every time
-#     @functools.lru_cache(maxsize=2) # 导入 functools 模块并使用 @functools.lru_cache(maxsize=2) 装饰器缓存 observation_space 方法的返回值，最多缓存两个结果。
-#     def observation_space(self, agent): # 定义 observation_space 方法，返回指定代理的观察空间
-#         # the observation can be different for each agent
-#         agent = self.agent_map[agent] # 通过 self.agent_map 获取对应的代理
-#         dummy_mdp = self.base_env.mdp # 创建一个 dummy_mdp 和 dummy_state 来生成观察空间的形状
-#         dummy_state = dummy_mdp.get_standard_start_state()
-#         obs_shape = agent.featurize(dummy_state)[0].shape
-#         high = np.ones(obs_shape) * float("inf")
-#         low = np.zeros(obs_shape)
-#         return gymnasium.spaces.Box(low, high, dtype=np.float32) # 根据观察空间的形状创建一个值域为 [0, +inf) 的 Box 空间
-
-#     # we want to return the same space object every time
-#     @functools.lru_cache(maxsize=1) # 使用 @functools.lru_cache(maxsize=1) 装饰器缓存 action_space 方法的返回值，最多缓存一个结果
-#     def action_space(self, agent):  # 定义 action_space 方法
-#         # the action space is the same for each agent
-#         return gymnasium.spaces.Discrete(len(Action.ALL_ACTIONS)) # 返回离散的动作空间，其大小为所有可能动作的数量
-
-#     def step(self, joint_action): # 定义 step 方法，执行一个联合动作 joint_action
-#         joint_action = [Action.ALL_ACTIONS[joint_action[agent]] for agent in joint_action] # 将每个代理的动作转换为具体的动作
-#         obs, reward, done, info = self.base_env.step(joint_action) # 调用 self.base_env.step(joint_action) 执行动作，返回观察、奖励、完成状态和信息。
-#         # https://gymnasium.farama.org/content/basic_usage/
-#         # we have no early termination condition in this env, and the environment only terminates when the time horizon is reached
-#         # therefore the terminated is always False, and we set truncated to done
-#         terminated = False # 设定 terminated 总是 False
-#         truncated = done   # 并将 done 设置为 truncated
-
-#         def create_dict(value):   # 定义 create_dict 方法，用于为每个代理创建包含相同值的字典（如奖励、完成状态、截断状态和信息）
-#             """
-#             Each agent should have the same reward, terminated, truncated, info
-#             """
-#             return {agent: value for agent in self.agents}
-
-#         def create_obs_dict(obs): # 定义 create_obs_dict 方法，用于为每个代理创建包含各自观察的字典
-#             """
-#             Observation is potentially different for each agent
-#             """
-#             return {
-#                 agent: self.agent_map[agent].featurize(obs)
-#                 for agent in self.agents
-#             }
-
-#         obs = create_obs_dict(obs)
-#         reward = create_dict(reward)
-#         terminated = create_dict(terminated)
-#         truncated = create_dict(truncated)
-#         info = create_dict(info) # 调用 create_obs_dict 和 create_dict 方法生成代理各自的观察和统一的奖励、完成状态、截断状态和信息
-#         if done:
-#             self.agents = []     # 如果环境完成 (done 为 True)，将 self.agents 设置为空列表
-#         return obs, reward, terminated, truncated, info # 返回观察、奖励、完成状态、截断状态和信息
-
-#     def reset(self, seed=None, options=None):
-#         """
-#         Reset the embedded OvercookedEnv envrionment to the starting state
-#         """
-#         self.base_env.reset()
-#         dummy_mdp = self.base_env.mdp
-#         dummy_state = dummy_mdp.get_standard_start_state()
-#         # when an environment terminates/truncates, PettingZoo wants all agents removed, so during reset we re-add them
-#         self.agents = self.possible_agents[:]
-#         # return the obsevations as dict
-#         obs_dict = {
-#             agent: self.agent_map[agent].featurize(dummy_state)[0]
-#             for agent in self.agents
-#         }
-#         return obs_dict, None
-
-#     def render(self, mode="human", close=False):
-#         pass
-
-
-
-
-# -------- OpenAI Gym ----------------------------------------------------------------------------------
-
-# 在Python中，类定义中的括号内指定父类，这是一种继承机制的体现。
-# 当你看到 class Overcooked(gym.Env): 这样的定义时，意味着 Overcooked 类是继承自 gym.Env 类的
-# 
-# gym.Env 是 Gym 库（一个开源的强化学习环境库）中定义的基类。
-# 通过继承 gym.Env，Overcooked 类自动获得了 gym.Env 中定义的所有属性和方法，比如 reset()、step()、render() 等，这些都是一个标准的强化学习环境应当具备的接口。
-# 这样做使得 Overcooked 类能够作为 Gym 环境使用，从而兼容 Gym 支持的各类强化学习算法和工具。
-# 
-# 简而言之，括号内的 gym.Env 表明 Overcooked 类是一个特定于Gym框架的环境类，
-# 它遵循Gym定义的强化学习环境接口规范，使得该环境可以直接与基于Gym库的强化学习算法和工具无缝集成。
 
     """
     Wrapper for the Env class above that is SOMEWHAT compatible with the standard gym API.
@@ -830,8 +696,9 @@ class OvercookedEnv(object):
     and the true Overcooked state. When we encode the true state to feed to A1, we also need to know
     what agent index it has in the environment (as encodings will be index dependent).
     """
-class Overcooked(gym.Env):
 
+
+class Overcooked(gym.Env):
     env_name = "Overcooked-v0"
 
     # gym checks for the action space and obs space while initializing the env and throws an error if none exists
@@ -889,30 +756,32 @@ class Overcooked(gym.Env):
         )
         agent_action, other_agent_action = [Action.INDEX_TO_ACTION[a] for a in action]
 
-        if self.agent_idx == 0:                               # 根据当前智能体的索引组织联合动作
-            joint_action = (agent_action, other_agent_action) # - 如果当前智能体索引是 0，联合动作为（主要智能体动作，次要智能体动作）
+        if self.agent_idx == 0:  # 根据当前智能体的索引组织联合动作
+            joint_action = (agent_action, other_agent_action)  # - 如果当前智能体索引是 0，联合动作为（主要智能体动作，次要智能体动作）
         else:
-            joint_action = (other_agent_action, agent_action) # - 否则，联合动作为（次要智能体动作，主要智能体动作）
+            joint_action = (other_agent_action, agent_action)  # - 否则，联合动作为（次要智能体动作，主要智能体动作）
 
-        next_state, reward_sparse, reward_shaped, done, env_info = self.base_env.step(joint_action) # 执行联合动作，获取下一个状态 next_state、奖励 reward、是否结束 done 和环境信息 env_info
-        ob_p0, ob_p1 = self.featurize_fn(next_state)    # 通过特征化函数 featurize_fn 用于将环境状态（即 next_state）转换为两个智能体的特征表示（ob_p0 和 ob_p1）
-        if self.agent_idx == 0:             # 根据当前智能体的索引组织两个智能体的观测。
-            both_agents_ob = (ob_p0, ob_p1) # - 如果当前智能体索引是 0，both_agents_ob 为（ob_p0，ob_p1）
+        next_state, reward_sparse, reward_shaped, done, env_info = self.base_env.step(
+            joint_action)  # 执行联合动作，获取下一个状态 next_state、奖励 reward、是否结束 done 和环境信息 env_info
+        ob_p0, ob_p1 = self.featurize_fn(
+            next_state)  # 通过特征化函数 featurize_fn 用于将环境状态（即 next_state）转换为两个智能体的特征表示（ob_p0 和 ob_p1）
+        if self.agent_idx == 0:  # 根据当前智能体的索引组织两个智能体的观测。
+            both_agents_ob = (ob_p0, ob_p1)  # - 如果当前智能体索引是 0，both_agents_ob 为（ob_p0，ob_p1）
         else:
-            both_agents_ob = (ob_p1, ob_p0) # - 否则，both_agents_ob 为（ob_p1，ob_p0）
+            both_agents_ob = (ob_p1, ob_p0)  # - 否则，both_agents_ob 为（ob_p1，ob_p0）
 
-        env_info["policy_agent_idx"] = self.agent_idx # 将当前智能体的索引添加到 env_info 中，键名为 policy_agent_idx。
+        env_info["policy_agent_idx"] = self.agent_idx  # 将当前智能体的索引添加到 env_info 中，键名为 policy_agent_idx。
 
         if "episode" in env_info.keys():
-            env_info["episode"]["policy_agent_idx"] = self.agent_idx # 如果 env_info 包含键 episode，则在 episode 中也添加 policy_agent_idx。
+            env_info["episode"][
+                "policy_agent_idx"] = self.agent_idx  # 如果 env_info 包含键 episode，则在 episode 中也添加 policy_agent_idx。
 
-        obs = {                                         # 组织返回的观测值 obs。obs 是一个字典，包含以下键值对：
-            "both_agent_obs": both_agents_ob,           # "both_agent_obs"：两个智能体的观测。
-            "overcooked_state": next_state,             # "overcooked_state"：下一个状态 next_state。
+        obs = {  # 组织返回的观测值 obs。obs 是一个字典，包含以下键值对：
+            "both_agent_obs": both_agents_ob,  # "both_agent_obs"：两个智能体的观测。
+            "overcooked_state": next_state,  # "overcooked_state"：下一个状态 next_state。
             "other_agent_env_idx": 1 - self.agent_idx,  # "other_agent_env_idx"：其他智能体的环境索引，为 1 - self.agent_idx。
         }
         return obs, reward_sparse, reward_shaped, done, env_info  # 返回观测 obs、奖励 reward、是否结束 done 和环境信息 env_info。
-
 
     def dummy_step(self, action):
 
@@ -924,33 +793,21 @@ class Overcooked(gym.Env):
         )
         agent_action, other_agent_action = [Action.INDEX_TO_ACTION[a] for a in action]
 
-        if self.agent_idx == 0:                               # 根据当前智能体的索引组织联合动作
-            joint_action = (agent_action, other_agent_action) # - 如果当前智能体索引是 0，联合动作为（主要智能体动作，次要智能体动作）
+        if self.agent_idx == 0:  # 根据当前智能体的索引组织联合动作
+            joint_action = (agent_action, other_agent_action)  # - 如果当前智能体索引是 0，联合动作为（主要智能体动作，次要智能体动作）
         else:
-            joint_action = (other_agent_action, agent_action) # - 否则，联合动作为（次要智能体动作，主要智能体动作）
+            joint_action = (other_agent_action, agent_action)  # - 否则，联合动作为（次要智能体动作，主要智能体动作）
 
-        next_state = self.base_env.dummy_step(joint_action) # 执行联合动作，获取下一个状态 next_state、奖励 reward、是否结束 done 和环境信息 env_info
-        ob_p0, ob_p1 = self.featurize_fn(next_state)    # 通过特征化函数 featurize_fn 用于将环境状态（即 next_state）转换为两个智能体的特征表示（ob_p0 和 ob_p1）
-        if self.agent_idx == 0:             # 根据当前智能体的索引组织两个智能体的观测。
-            both_agents_ob = (ob_p0, ob_p1) # - 如果当前智能体索引是 0，both_agents_ob 为（ob_p0，ob_p1）
+        next_state = self.base_env.dummy_step(
+            joint_action)  # 执行联合动作，获取下一个状态 next_state、奖励 reward、是否结束 done 和环境信息 env_info
+        ob_p0, ob_p1 = self.featurize_fn(
+            next_state)  # 通过特征化函数 featurize_fn 用于将环境状态（即 next_state）转换为两个智能体的特征表示（ob_p0 和 ob_p1）
+        if self.agent_idx == 0:  # 根据当前智能体的索引组织两个智能体的观测。
+            both_agents_ob = (ob_p0, ob_p1)  # - 如果当前智能体索引是 0，both_agents_ob 为（ob_p0，ob_p1）
         else:
-            both_agents_ob = (ob_p1, ob_p0) # - 否则，both_agents_ob 为（ob_p1，ob_p0）
+            both_agents_ob = (ob_p1, ob_p0)  # - 否则，both_agents_ob 为（ob_p1，ob_p0）
 
-        # env_info["policy_agent_idx"] = self.agent_idx # 将当前智能体的索引添加到 env_info 中，键名为 policy_agent_idx。
-
-        # if "episode" in env_info.keys():
-        #     env_info["episode"]["policy_agent_idx"] = self.agent_idx # 如果 env_info 包含键 episode，则在 episode 中也添加 policy_agent_idx。
-
-        # obs = {                                         # 组织返回的观测值 obs。obs 是一个字典，包含以下键值对：
-        #     "both_agent_obs": both_agents_ob,           # "both_agent_obs"：两个智能体的观测。
-        #     "overcooked_state": next_state,             # "overcooked_state"：下一个状态 next_state。
-        #     "other_agent_env_idx": 1 - self.agent_idx,  # "other_agent_env_idx"：其他智能体的环境索引，为 1 - self.agent_idx。
-        # }
-
-        # obs = origin_state
-
-        return both_agents_ob#obs, reward_sparse, reward_shaped, done, env_info  # 返回观测 obs、奖励 reward、是否结束 done 和环境信息 env_info。    
-
+        return both_agents_ob  # obs, reward_sparse, reward_shaped, done, env_info  # 返回观测 obs、奖励 reward、是否结束 done 和环境信息 env_info。
 
     def reset(self):
         """
@@ -964,14 +821,14 @@ class Overcooked(gym.Env):
         self.base_env.reset()
         self.mdp = self.base_env.mdp
         # self.agent_idx = np.random.choice([0, 1])
-        self.agent_idx = 0 # 在我们的代码中，一直让 "agent 0" 当 AI
+        self.agent_idx = 0  # 在我们的代码中，一直让 "agent 0" 当 AI
         ob_p0, ob_p1 = self.featurize_fn(self.base_env.state)
 
         if self.agent_idx == 0:
             both_agents_ob = (ob_p0, ob_p1)
         else:
             both_agents_ob = (ob_p1, ob_p0)
-        
+
         # -- 返回的是 "3个" 值，构成了一个字典
         return {
             "both_agent_obs": both_agents_ob,

@@ -11,6 +11,7 @@ from HyperParameters import *
 # ----
 
 seed_generator = tf.random.set_seed(1337)
+tf.config.run_functions_eagerly(False)
 
 """
 ## Functions and class
@@ -242,6 +243,7 @@ for epoch in range(epochs):
             )
             episode_return_sparse, episode_return_shaped, episode_return_env, episode_length = 0, 0, 0, 0
 
+    training_time = datetime.now()
     # Training policy with mini-batches
     for _ in range(iterations_train_policy):
         for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches_gpu(
@@ -252,9 +254,11 @@ for epoch in range(epochs):
                 break
             train_value_function(obs_batch, ret_batch)
 
+    print(f'TIME ELAPSED on TRAINING in EPOCH {epoch}: {str((datetime.now() - training_time).total_seconds())}')
+
     # Summarize results after each epoch
     avg_return_shaped.append(sum_return_shaped / num_episodes)
     avg_return_sparse.append(sum_return_sparse / num_episodes)
     avg_return_env.append(sum_return_env / num_episodes)
 
-    print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).seconds)}')
+    print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).total_seconds())}')
