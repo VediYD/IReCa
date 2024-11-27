@@ -40,12 +40,13 @@ def discounted_cumulative_sums(x, discount):
 
 
 class Buffer:  # GPU-optimized Buffer
-    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):
+    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95, last_value=0):
         self.observation_buffer = tf.Variable(tf.zeros((size, observation_dimensions), dtype=tf.float32))
         self.action_buffer = tf.Variable(tf.zeros(size, dtype=tf.int32))
         self.advantage_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.reward_env_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.return_env_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
+        self.last_value_tensor = tf.constant([last_value], dtype=tf.float32)
         self.value_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.logprobability_buffer = tf.Variable(tf.zeros(size, dtype=tf.float32))
         self.gamma, self.lam = gamma, lam
@@ -65,7 +66,7 @@ class Buffer:  # GPU-optimized Buffer
         self.logprobability_buffer[self.pointer].assign(logprobability)
         self.pointer += 1
 
-    def finish_trajectory(self, last_value=0):
+    def finish_trajectory(self):
         path_slice = slice(self.trajectory_start_index, self.pointer)
 
         # Slice relevant parts of the buffers
@@ -73,8 +74,8 @@ class Buffer:  # GPU-optimized Buffer
         values = self.value_buffer[path_slice]
 
         # Append `last_value` using tf.concat
-        rewards = tf.concat([rewards, tf.convert_to_tensor([last_value], dtype=rewards.dtype)], axis=0)
-        values = tf.concat([values, tf.convert_to_tensor([last_value], dtype=values.dtype)], axis=0)
+        rewards = tf.concat([rewards, self.last_value_tensor], axis=0)
+        values = tf.concat([values, self.last_value_tensor], axis=0)
 
         # Calculate deltas using TensorFlow operations
         deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]
@@ -256,4 +257,4 @@ for epoch in range(epochs):
     avg_return_sparse.append(sum_return_sparse / num_episodes)
     avg_return_env.append(sum_return_env / num_episodes)
 
-    print('TIME ELAPSED on EPOC: ', str((datetime.now() - time).microseconds))
+    print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).seconds)}')
