@@ -192,7 +192,7 @@ from datetime import datetime
 
 # Training Loop
 for epoch in range(epochs):
-    t = datetime.now()
+    time = datetime.now()
     sum_return_sparse, sum_return_shaped, sum_return_env, sum_length, num_episodes = 0, 0, 0, 0, 0
 
     for t in range(steps_per_epoch):
@@ -256,4 +256,4 @@ for epoch in range(epochs):
     avg_return_sparse.append(sum_return_sparse / num_episodes)
     avg_return_env.append(sum_return_env / num_episodes)
 
-    print('TIME ELAPSED on EPOC: ', str((datetime.now() - t).microseconds))
+    print('TIME ELAPSED on EPOC: ', str((datetime.now() - time).microseconds))
