@@ -227,8 +227,9 @@ for epoch in range(epochs):
 
         # Handle terminal state and reset
         if done or (t == steps_per_epoch - 1):
-            last_value = 0 if done else critic(observation_AI)
-            buffer.finish_trajectory(last_value)
+            last_value = (0 * int(done)) + (critic(observation_AI) * int(not done))
+            buffer.last_value_tensor = tf.constant([last_value], dtype=tf.float32)
+            buffer.finish_trajectory()
             sum_return_sparse += episode_return_sparse
             sum_return_shaped += episode_return_shaped
             sum_return_env += episode_return_env
