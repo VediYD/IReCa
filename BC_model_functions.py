@@ -3,7 +3,6 @@ import os
 import pickle
 import itertools
 
-
 import numpy as np
 import tensorflow as tf
 # from ray.rllib.policy import Policy as RllibPolicy
@@ -15,15 +14,9 @@ from human_aware_rl.human.process_dataframes import (
     get_human_human_trajectories,
     get_trajs_from_data,
 )
-# from human_aware_rl.rllib.rllib import (
-#     RlLibAgent,
-#     evaluate,
-    # get_base_ae,
-#     softmax,
-# )
+
 from human_aware_rl.static import CLEAN_2019_HUMAN_DATA_TRAIN
-# from human_aware_rl.utils import get_flattened_keys, recursive_dict_update
-from overcooked_ai_py.mdp.actions import Action     # !!!!! 是在这里找到的 Action 这个 Class, 但是这个脚本虽然描述了各种 action, 但并不包含 action_space
+from overcooked_ai_py.mdp.actions import Action
 from overcooked_ai_py.mdp.overcooked_env import DEFAULT_ENV_PARAMS  # 但是这个 DEFAULT_ENV_PARAMS 并不是 observation_space
 
 from overcooked_ai_py.agents.benchmarking import AgentEvaluator
@@ -32,7 +25,11 @@ from overcooked_ai_py.agents.benchmarking import AgentEvaluator
 # Configuration #
 #################
 
-BC_SAVE_DIR = os.path.join(".", "bc_runs_functions") # 这行代码定义了一个变量 BC_SAVE_DIR，它表示 BC 模型保存的目录路径。通过将 DATA_DIR 路径与子目录 "bc_runs" 组合在一起，确定了保存模型的完整路径。 定义行为克隆模型保存的目录路径
+BC_SAVE_DIR = os.path.join(".", "bc_runs_functions")
+# 这行代码定义了一个变量 BC_SAVE_DIR，
+# 它表示 BC 模型保存的目录路径。通过将
+# DATA_DIR 路径与子目录 "bc_runs" 组合在一起，
+# 确定了保存模型的完整路径。 定义行为克隆模型保存的目录路径
 
 DEFAULT_DATA_PARAMS = {
     "layouts": ["cramped_room"],
@@ -66,9 +63,13 @@ DEFAULT_BC_PARAMS = {
     "eager": True,
     "use_lstm": False,
     "cell_size": 256,
-    "data_params": DEFAULT_DATA_PARAMS, 
+    "data_params": DEFAULT_DATA_PARAMS,
     "mdp_params": {"layout_name": "cramped_room", "old_dynamics": False},
-    "env_params": DEFAULT_ENV_PARAMS, # DEFAULT_ENV_PARAMS 是一个字典，其中包含了环境的一个参数 horizon，其值为 400。 horizon 参数通常指的是环境的最大时间步数（episode length）。也就是说，每个episode可以进行的最大步数是 400 步。
+    "env_params": DEFAULT_ENV_PARAMS,
+    # DEFAULT_ENV_PARAMS 是一个字典，
+    # 其中包含了环境的一个参数 horizon，
+    # 其值为 400。 horizon 参数通常指的是环境的最大时间步数（episode length）。也就是说，
+    # 每个episode可以进行的最大步数是 400 步。
     "mdp_fn_params": {},
     "mlp_params": DEFAULT_MLP_PARAMS,
     "training_params": DEFAULT_TRAINING_PARAMS,
@@ -76,14 +77,15 @@ DEFAULT_BC_PARAMS = {
     "action_shape": (len(Action.ALL_ACTIONS),),
 }
 
-# Boolean indicating whether all param dependencies have been loaded. Used to prevent re-loading unceccesarily
+# Boolean indicating whether all param dependencies have been loaded. Used to prevent re-loading unnecessarily
 _params_initalized = False
 
+
 def get_base_ae(
-    mdp_params, env_params, outer_shape=None, mdp_params_schedule_fn=None
+        mdp_params, env_params, outer_shape=None, mdp_params_schedule_fn=None
 ):
     """
-    mdp_params: one set of fixed mdp parameter used by the enviroment
+    mdp_params: one set of fixed mdp parameter used by the environment
     env_params: env parameters (horizon, etc)
     outer_shape: outer shape of the environment
     mdp_params_schedule_fn: the schedule for varying mdp params
@@ -91,7 +93,7 @@ def get_base_ae(
     return: the base agent evaluator
     """
     assert (
-        mdp_params == None or mdp_params_schedule_fn == None
+            mdp_params == None or mdp_params_schedule_fn == None
     ), "either of the two has to be null"
     if type(mdp_params) == dict and "layout_name" in mdp_params:
         ae = AgentEvaluator.from_layout_name(
@@ -116,6 +118,7 @@ def get_base_ae(
         # should not reach this case
         raise NotImplementedError()
     return ae
+
 
 def _get_base_ae(bc_params):
     return get_base_ae(bc_params["mdp_params"], bc_params["env_params"])
@@ -142,6 +145,7 @@ def get_flattened_keys(dictionary):
         )
     )
 
+
 def recursive_dict_update(map, key, value):
     if type(map) != dict:
         return False
@@ -152,29 +156,37 @@ def recursive_dict_update(map, key, value):
 
 
 # For lazily loading the default params. Prevents loading on every import of this module
-def get_bc_params(**args_to_override): # **args_to_override表示该函数可以接受任意数量的关键字参数，这些参数用于覆盖默认参数
+def get_bc_params(**args_to_override):  # **args_to_override表示该函数可以接受任意数量的关键字参数，这些参数用于覆盖默认参数
     """
     Loads default bc params defined globally. For each key in args_to_override, overrides the default with the
     value specified for that key. Recursively checks all children. If key not found, creates new top level parameter.
 
-    Note: Even though children can share keys, for simplicity, we enforce the condition that all keys at all levels must be distict
+    Note: Even though children can share keys, for simplicity,
+    we enforce the condition that all keys at all levels must be distinct
     """
     global _params_initalized, DEFAULT_BC_PARAMS
-    if not _params_initalized: # 如果参数尚未初始化（_params_initalized为False），则会调用_get_observation_shape函数来设置DEFAULT_BC_PARAMS中的"observation_shape"字段，并将_params_initalized置为False（这里逻辑似乎有问题，可能应该是True）
+    if not _params_initalized:
+        # 如果参数尚未初始化（_params_initalized为False），
+        # 则会调用_get_observation_shape函数来设置DEFAULT_BC_PARAMS中的"observation_shape"字段，
+        # 并将_params_initalized置为False（这里逻辑似乎有问题，可能应该是True）
         DEFAULT_BC_PARAMS["observation_shape"] = _get_observation_shape(DEFAULT_BC_PARAMS)
         _params_initalized = False
-    params = copy.deepcopy(DEFAULT_BC_PARAMS) # 使用copy.deepcopy对DEFAULT_BC_PARAMS进行深拷贝，确保后续操作不会修改原始的默认参数
+    params = copy.deepcopy(DEFAULT_BC_PARAMS)  # 使用copy.deepcopy对DEFAULT_BC_PARAMS进行深拷贝，确保后续操作不会修改原始的默认参数
 
-    for arg, val in args_to_override.items(): # 遍历传入的关键字参数（args_to_override），使用recursive_dict_update函数更新参数字典params中的对应值
+    for arg, val in args_to_override.items():
+        # 遍历传入的关键字参数（args_to_override，
+        # 使用recursive_dict_update函数更新参数字典params中的对应值
         updated = recursive_dict_update(params, arg, val)
-        if not updated: # 如果某个参数未被更新（即未找到对应的键），则会打印警告信息，并将该参数添加为顶级参数
-            print("WARNING, no value for specified bc argument {} found in schema. Adding as top level parameter".format(arg))
+        if not updated:  # 如果某个参数未被更新（即未找到对应的键），则会打印警告信息，并将该参数添加为顶级参数
+            print(
+                "WARNING, no value for specified bc argument {} found in schema. Adding as top level parameter".format(
+                    arg))
 
     all_keys = get_flattened_keys(params)
     if len(all_keys) != len(set(all_keys)):
         raise ValueError("Every key at every level must be distict for BC params!")
 
-    return params # 最后返回更新后的参数字典params。
+    return params  # 最后返回更新后的参数字典params。
 
 
 ##############
@@ -205,7 +217,7 @@ def load_data(bc_params, verbose=False):
 
     if bc_params["use_lstm"]:
         seq_lens = np.array([len(seq) for seq in inputs])
-        seq_padded = _pad(inputs, default=np.zeros((len(inputs[0][0],))),)
+        seq_padded = _pad(inputs, default=np.zeros((len(inputs[0][0], ))), )
         targets_padded = _pad(targets, default=np.zeros(1))
         seq_t = np.dstack(seq_padded).transpose((2, 0, 1))
         targets_t = np.dstack(targets_padded).transpose((2, 0, 1))
@@ -344,9 +356,9 @@ def evaluate_bc_model(model, bc_params, verbose=False):
 
     Arguments
 
-        - model (tf.keras.Model)        A function that maps featurized overcooked states to action logits
-        - bc_params (dict)              Specifies the environemnt in which to evaluate the agent (i.e. layout, reward_shaping_param)
-                                            as well as the configuration for the rollout (rollout_length)
+        - model (tf.keras.Model)  A function that maps featurized overcooked states to action logits
+        - bc_params (dict)  Specifies the environemnt in which to evaluate the agent (i.e. layout, reward_shaping_param)
+                            as well as the configuration for the rollout (rollout_length)
 
     Returns
 
@@ -392,7 +404,7 @@ def _build_model(observation_shape, action_shape, mlp_params, **kwargs):
 
     ## Build fully connected layers
     assert (
-        len(mlp_params["net_arch"]) == mlp_params["num_layers"]
+            len(mlp_params["net_arch"]) == mlp_params["num_layers"]
     ), "Invalid Fully Connected params"
 
     for i in range(mlp_params["num_layers"]):
@@ -408,12 +420,12 @@ def _build_model(observation_shape, action_shape, mlp_params, **kwargs):
 
 
 def _build_lstm_model(
-    observation_shape,
-    action_shape,
-    mlp_params,
-    cell_size,
-    max_seq_len=20,
-    **kwargs
+        observation_shape,
+        action_shape,
+        mlp_params,
+        cell_size,
+        max_seq_len=20,
+        **kwargs
 ):
     ## Inputs
     obs_in = keras.Input(shape=(None, *observation_shape), name="Overcooked_observation")
@@ -424,7 +436,7 @@ def _build_lstm_model(
 
     ## Build fully connected layers
     assert (
-        len(mlp_params["net_arch"]) == mlp_params["num_layers"]
+            len(mlp_params["net_arch"]) == mlp_params["num_layers"]
     ), "Invalid Fully Connected params"
 
     for i in range(mlp_params["num_layers"]):
@@ -491,209 +503,18 @@ class TfContextManager:
         self.ctx.__exit__(*args)
 
 
-# the BehaviorCloningPolicy class inherits from RllibPolicy, which is part of the RLlib library (a reinforcement learning library in Ray). 
-# The observation_space parameter is expected to be passed when an instance of BehaviorCloningPolicy is created.
-# class BehaviorCloningPolicy(RllibPolicy): 
-#     def __init__(self, observation_space, action_space, config):
-#         """
-#         RLLib compatible constructor for initializing a behavior cloning model
-
-#         observation_space (gym.Space|tuple)     Shape of the featurized observations
-#         action_space (gym.space|tuple)          Shape of the action space (len(Action.All_ACTIONS),)
-#         config (dict)                           Dictionary of relavant bc params
-#             - model_dir (str)                   Path to pickled keras.Model used to map observations to action logits
-#             - stochastic (bool)                 Whether action should return logit argmax or sample over distribution
-#             - bc_model (keras.Model)            Pointer to loaded policy model. Overrides model_dir
-#             - bc_params (dict)                  Dictionary of parameters used to train model. Required if "model" is present
-#             - eager (bool)                      Whether the model should run in eager (or graph) mode. Overrides bc_params['eager'] if present
-#         """
-#         super(BehaviorCloningPolicy, self).__init__(observation_space, action_space, config)
-
-#         if "bc_model" in config and config["bc_model"]:
-#             assert (
-#                 "bc_params" in config
-#             ), "must specify params in addition to model"
-#             assert issubclass(
-#                 type(config["bc_model"]), keras.Model
-#             ), "model must be of type keras.Model"
-#             model, bc_params = config["bc_model"], config["bc_params"]
-#         else:
-#             assert (
-#                 "model_dir" in config
-#             ), "must specify model directory if model not specified"
-#             model, bc_params = load_bc_model(config["model_dir"])
-
-#         # Save the session that the model was loaded into so it is available at inference time if necessary
-#         self._sess = get_session()
-#         self._setup_shapes()
-
-#         # Basic check to make sure model dimensions match
-#         assert self.observation_shape == bc_params["observation_shape"]
-#         assert self.action_shape == bc_params["action_shape"]
-
-#         self.model = model
-#         self.stochastic = config["stochastic"]
-#         self.use_lstm = bc_params["use_lstm"]
-#         self.cell_size = bc_params["cell_size"]
-#         self.eager = (
-#             config["eager"] if "eager" in config else bc_params["eager"]
-#         )
-#         self.context = self._create_execution_context()
-
-#     def _setup_shapes(self):
-#         # This is here to make the class compatible with both tuples or gym.Space objs for the spaces
-#         # Note: action_space = (len(Action.ALL_ACTIONS,)) is technically NOT the action space shape, which would be () since actions are scalars
-#         self.observation_shape = (
-#             self.observation_space
-#             if type(self.observation_space) == tuple
-#             else self.observation_space.shape
-#         )
-#         self.action_shape = (
-#             self.action_space
-#             if type(self.action_space) == tuple
-#             else (self.action_space.n,)
-#         )
-
-#     @classmethod
-#     def from_model_dir(cls, model_dir, stochastic=True):
-#         model, bc_params = load_bc_model(model_dir)
-#         config = {
-#             "bc_model": model,
-#             "bc_params": bc_params,
-#             "stochastic": stochastic,
-#         }
-#         return cls(
-#             bc_params["observation_shape"], bc_params["action_shape"], config
-#         )
-
-#     @classmethod
-#     def from_model(cls, model, bc_params, stochastic=True):
-#         config = {
-#             "bc_model": model,
-#             "bc_params": bc_params,
-#             "stochastic": stochastic,
-#         }
-#         return cls(
-#             bc_params["observation_shape"], bc_params["action_shape"], config
-#         )
-
-#     def compute_actions(
-#         self,
-#         obs_batch,
-#         state_batches=None,
-#         prev_action_batch=None,
-#         prev_reward_batch=None,
-#         info_batch=None,
-#         episodes=None,
-#         **kwargs
-#     ):
-#         """
-#         Computes sampled actions for each of the corresponding OvercookedEnv states in obs_batch
-
-#         Args:
-#             obs_batch (np.array): batch of pre-process (lossless state encoded) observations
-
-#         Returns:
-#             actions (list|np.array): batch of output actions shape [BATCH_SIZE, ACTION_SHAPE]
-#             state_outs (list): only necessary for rnn hidden states
-#             infos (dict): dictionary of extra feature batches { "action_dist_inputs" : [BATCH_SIZE, ...] }
-#         """
-#         # Cast to np.array if list (no-op if already np.array)
-#         obs_batch = np.array(obs_batch)
-
-#         # Run the model
-#         with self.context:
-#             action_logits, states = self._forward(obs_batch, state_batches)
-
-#         # Softmax in numpy to convert logits to probabilities
-#         action_probs = softmax(action_logits)
-#         if self.stochastic:
-#             # Sample according to action_probs for each row in the output
-#             actions = np.array(
-#                 [
-#                     np.random.choice(self.action_shape[0], p=action_probs[i])
-#                     for i in range(len(action_probs))
-#                 ]
-#             )
-#         else:
-#             actions = np.argmax(action_logits, axis=1)
-
-#         return actions, states, {"action_dist_inputs": action_logits}
-
-#     def get_initial_state(self):
-#         """
-#         Returns the initial hidden and memory states for the model if it is recursive
-
-#         Note, this shadows the rllib.Model.get_initial_state function, but had to be added here as
-#         keras does not allow mixins in custom model classes
-
-#         Also note, either this function or self.model.get_initial_state (if it exists) must be called at
-#         start of an episode
-#         """
-#         if self.use_lstm:
-#             return [
-#                 np.zeros(
-#                     self.cell_size,
-#                 ),
-#                 np.zeros(
-#                     self.cell_size,
-#                 ),
-#             ]
-#         return []
-
-#     def get_weights(self):
-#         """
-#         No-op to keep rllib from breaking, won't be necessary in future rllib releases
-#         """
-#         pass
-
-#     def set_weights(self, weights):
-#         """
-#         No-op to keep rllib from breaking
-#         """
-#         pass
-
-#     def learn_on_batch(self, samples):
-#         """
-#         Static policy requires no learning
-#         """
-#         return {}
-
-#     def _forward(self, obs_batch, state_batches):
-#         if self.use_lstm:
-#             obs_batch = np.expand_dims(obs_batch, 1)
-#             seq_lens = np.ones(len(obs_batch))
-#             model_out = self.model.predict(
-#                 [obs_batch, seq_lens] + state_batches
-#             )
-#             logits, states = model_out[0], model_out[1:]
-#             logits = logits.reshape((logits.shape[0], -1))
-#             return logits, states
-#         else:
-#             return self.model.predict(obs_batch, verbose=0), []
-
-#     def _create_execution_context(self):
-#         """
-#         Creates a private execution context for the model
-
-#         Necessary if using with rllib in order to isolate this policy model from others
-#         """
-#         if self.eager:
-#             return NullContextManager()
-#         return TfContextManager(self._sess)
-
-
-
-# -------- main 主要功能 --------
-# 1. 获取行为克隆训练的参数配置。
-# 2. 使用这些参数训练一个行为克隆模型，并将训练好的模型保存在指定目录中。
-# 3. 评估训练好的模型的性能，输出评估结果。
-# 通过这些步骤，用户可以训练和评估一个行为克隆模型，用于进一步的强化学习任务。
-
-if __name__ == "__main__":      # 这行代码检查当前脚本是否作为主程序运行。__name__ 是一个内置变量，如果当前脚本被直接执行，那么 __name__ 的值将是 "__main__"。这种检查方式常用于确保某些代码块仅在脚本被直接运行时执行，而不是在被导入为模块时执行
-    params = get_bc_params()    # 这行代码调用函数 get_bc_params()，并将其返回值赋给变量 params。 get_bc_params() 函数通常用于获取行为克隆训练的参数配置
-    model = train_bc_model(     # 这行代码调用函数 train_bc_model() 进行行为克隆模型的训练
-        os.path.join(BC_SAVE_DIR, "default"), params, verbose=True  # os.path.join(BC_SAVE_DIR, "default") 表示模型保存路径，将在 BC_SAVE_DIR 目录下创建一个名为 "default" 的子目录。
-    )                                                               # params 是训练参数，由 get_bc_params() 函数提供。 verbose=True 表示在训练过程中输出详细信息。
+if __name__ == "__main__":
+    # 这行代码检查当前脚本是否作为主程序运行。__name__ 是一个内置变量，
+    # 如果当前脚本被直接执行，那么 __name__ 的值将是 "__main__"。这种检查方式常用于确保某些代码块仅在脚本被直接运行时执行，
+    # 而不是在被导入为模块时执行
+    params = get_bc_params()
+    # 这行代码调用函数 get_bc_params()，
+    # 并将其返回值赋给变量 params。 get_bc_params() 函数通常用于获取行为克隆训练的参数配置
+    model = train_bc_model(  # 这行代码调用函数 train_bc_model() 进行行为克隆模型的训练
+        os.path.join(BC_SAVE_DIR, "default"), params, verbose=True
+        # os.path.join(BC_SAVE_DIR, "default") 表示模型保存路径，将在 BC_SAVE_DIR 目录下创建一个名为 "default" 的子目录。
+    )  # params 是训练参数，由 get_bc_params() 函数提供。 verbose=True 表示在训练过程中输出详细信息。
     # Evaluate our model's performance in a rollout
-    evaluate_bc_model(model, params)    # 这行代码调用函数 evaluate_bc_model() 评估训练好的行为克隆模型的性能。 model 是已经训练好的模型。 params 是用于评估的参数，与训练参数一致。
+    evaluate_bc_model(model, params)
+    # 这行代码调用函数 evaluate_bc_model() 评估训练好的行为克隆模型的性能。
+    # model 是已经训练好的模型。 params 是用于评估的参数，与训练参数一致。

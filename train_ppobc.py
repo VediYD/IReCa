@@ -189,7 +189,7 @@ for epoch in range(epochs):
 
         # Step the environment
         obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(
-            [action_AI_agent.numpy().tolist()[0], action_HM_agent.numpy().tolist()[0]]
+            [tf.keras.backend.get_value(action_AI_agent[0]), tf.keras.backend.get_value(action_HM_agent[0])]
         )
 
         # Extract and reshape observations once at each step
