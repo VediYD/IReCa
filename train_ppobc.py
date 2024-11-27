@@ -256,4 +256,4 @@ for epoch in range(epochs):
     avg_return_sparse.append(sum_return_sparse / num_episodes)
     avg_return_env.append(sum_return_env / num_episodes)
 
-    print('TIME ELAPSED on EPOC: ', (datetime.now() - t).microseconds)
+    print('TIME ELAPSED on EPOC: ', str((datetime.now() - t).microseconds))
