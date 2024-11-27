@@ -225,11 +225,10 @@ for epoch in range(epochs):
         buffer.store(observation_AI, action_AI_agent, reward_env, critic(observation_AI),
                      logprobabilities(action_logits_AI_agent, action_AI_agent))
 
+        buffer.last_value_tensor = tf.constant([0], dtype=tf.float32) if done else critic(observation_AI)
+
         # Handle terminal state and reset
         if done or (t == steps_per_epoch - 1):
-            if done:
-                buffer.last_value_tensor = critic(observation_AI)
-
             buffer.finish_trajectory()
             sum_return_sparse += episode_return_sparse
             sum_return_shaped += episode_return_shaped
