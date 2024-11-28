@@ -1,3 +1,10 @@
+import gym
+from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
+from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, Overcooked
+from stable_baselines3.common.vec_env import SubprocVecEnv
+from BC_model_functions import load_bc_model
+
+
 epochs = int(400)
 horizon_len = int(400)
 
@@ -34,12 +41,6 @@ target_kl = 0.01  # 目标 KL 散度：控制每次更新时，策略分布相�
 learning_rate_reward_shaping = 4e-6  # 1/(100*5*400)=1/(2e5)=5e-6 # 4e-6=1/(2.5e5)
 
 # ----
-
-from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
-from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, Overcooked
-import gym
-
-# ----
 bc_model_path_train = "./bc_runs_ireca/reproduce_train/cramped_room"
 bc_model_path_test = "./bc_runs_ireca/reproduce_test/cramped_room"
 mdp = OvercookedGridworld.from_layout_name("cramped_room")
@@ -49,14 +50,18 @@ mdp = OvercookedGridworld.from_layout_name("cramped_room")
 # bc_model_path_test  = "./bc_runs_ireca/reproduce_test/asymmetric_advantages"
 # mdp = OvercookedGridworld.from_layout_name("asymmetric_advantages")
 
+
 # ----
-base_env = OvercookedEnv.from_mdp(mdp, horizon=horizon_len)
-env = gym.make("Overcooked-v0", base_env=base_env, featurize_fn=base_env.featurize_state_mdp)
+def make_env():
+    # Your custom environment creation logic
+    base_env = OvercookedEnv.from_mdp(mdp, horizon=horizon_len)
+    return gym.make("Overcooked-v0", base_env=base_env, featurize_fn=base_env.featurize_state_mdp)
+
+
+num_envs = 4  # Number of parallel environments
+vec_env = SubprocVecEnv([make_env for _ in range(num_envs)])
 
 # -------- (BC human) model loading --------
-from BC_model_functions import load_bc_model
-
-# --
 bc_model_train, bc_params_train = load_bc_model(bc_model_path_train)
 bc_model_test, bc_params_test = load_bc_model(bc_model_path_test)
 
