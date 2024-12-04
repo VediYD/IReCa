@@ -1,3 +1,11 @@
+import os
+from datetime import datetime
+
+import numpy as np
+import tensorflow as tf
+import scipy.signal
+import matplotlib.pyplot as plt
+
 """
 ## Functions and class
 """
@@ -134,14 +142,6 @@ def train_value_function(observation_buffer, return_env_buffer):  # 训练价值
 
 
 if __name__ == '__main__':
-    import os
-    from datetime import datetime
-
-    import numpy as np
-    import tensorflow as tf
-    import scipy.signal
-    import matplotlib.pyplot as plt
-
     from func_nn_ppo import func_nn_ppo
     from HyperParameters import *
 
