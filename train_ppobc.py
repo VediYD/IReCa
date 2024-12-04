@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from func_nn_ppo import func_nn_ppo
 from HyperParameters import *
 
+
+env = vec_env
+
 # ----
 
 seed_generator = tf.random.set_seed(1337)
