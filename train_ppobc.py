@@ -1,28 +1,9 @@
-import os
-
-import numpy as np
-import tensorflow as tf
-import scipy.signal
-import matplotlib.pyplot as plt
-
-from func_nn_ppo import func_nn_ppo
-from HyperParameters import *
-
-
-env = vec_env
-
-# ----
-
-seed_generator = tf.random.set_seed(1337)
-tf.config.run_functions_eagerly(False)
-
 """
 ## Functions and class
 """
 
 
 def tf_get_mini_batches_gpu(obs_buf, act_buf, adv_buf, ret_buf, logp_buf, batch_size):
-
     # Use Dataset API to batch and prefetch
     dataset = tf.data.Dataset.from_tensor_slices((
         obs_buf,
@@ -152,117 +133,132 @@ def train_value_function(observation_buffer, return_env_buffer):  # 训练价值
     value_optimizer.apply_gradients(zip(value_grads, critic.trainable_variables))
 
 
-"""
-## Initializations  
-"""
-observation_dimensions = env.observation_space.shape[0]
-num_actions = env.action_space.n
-obs_dict = env.reset()  # 得到 reset 函数返回的字典值
-# -- 把字典里面的各种物理量提取出来 --
-both_agent_obs = obs_dict["both_agent_obs"]  # 获取两个智能体的观察值
-other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能体的环境索引
+if __name__ == '__main__':
+    import os
+    from datetime import datetime
 
-observation_AI = np.array(both_agent_obs[1 - other_agent_env_idx])
-observation_HM = np.array(both_agent_obs[other_agent_env_idx])
+    import numpy as np
+    import tensorflow as tf
+    import scipy.signal
+    import matplotlib.pyplot as plt
 
-observation_AI = tf.cast(tf.reshape(observation_AI, (1, -1)), dtype=tf.float32)
-observation_HM = tf.cast(tf.reshape(observation_HM, (1, -1)), dtype=tf.float32)
+    from func_nn_ppo import func_nn_ppo
+    from HyperParameters import *
 
-episode_return_sparse, episode_return_shaped = 0, 0
-episode_return_env, episode_length = 0, 0
-count_step = 0
+    env = vec_env
 
-buffer = Buffer(observation_dimensions, steps_per_epoch)  # Initialize the buffer (# 初始化缓冲区)
-actor, critic = func_nn_ppo(observation_dimensions, num_actions)
+    # ----
+    seed_generator = tf.random.set_seed(1337)
+    tf.config.run_functions_eagerly(False)
 
-# Initialize the policy and the value function optimizers
-if bc_model_path_train == "./bc_runs_ireca/reproduce_train/cramped_room":
-    policy_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_policy_cr)
-    value_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_value_cr)
-elif bc_model_path_train == "./bc_runs_ireca/reproduce_train/asymmetric_advantages":
-    policy_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_policy_aa)
-    value_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_value_aa)
+    """
+    ## Initializations  
+    """
+    observation_dimensions = env.observation_space.shape[0]
+    num_actions = env.action_space.n
+    obs_dict = env.reset()  # 得到 reset 函数返回的字典值
+    # -- 把字典里面的各种物理量提取出来 --
+    both_agent_obs = obs_dict["both_agent_obs"]  # 获取两个智能体的观察值
+    other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能体的环境索引
 
-"""
-## Train
-"""
+    observation_AI = np.array(both_agent_obs[1 - other_agent_env_idx])
+    observation_HM = np.array(both_agent_obs[other_agent_env_idx])
 
-# Pre-compute and set static parameters outside loops
-avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
-observation_AI = tf.reshape(observation_AI, (1, -1))
-observation_HM = tf.reshape(observation_HM, (1, -1))
+    observation_AI = tf.cast(tf.reshape(observation_AI, (1, -1)), dtype=tf.float32)
+    observation_HM = tf.cast(tf.reshape(observation_HM, (1, -1)), dtype=tf.float32)
 
-from datetime import datetime
+    episode_return_sparse, episode_return_shaped = 0, 0
+    episode_return_env, episode_length = 0, 0
+    count_step = 0
 
+    buffer = Buffer(observation_dimensions, steps_per_epoch)  # Initialize the buffer (# 初始化缓冲区)
+    actor, critic = func_nn_ppo(observation_dimensions, num_actions)
 
-# Training Loop
-for epoch in range(epochs):
-    time = datetime.now()
-    sum_return_sparse, sum_return_shaped, sum_return_env, sum_length, num_episodes = 0, 0, 0, 0, 0
+    # Initialize the policy and the value function optimizers
+    if bc_model_path_train == "./bc_runs_ireca/reproduce_train/cramped_room":
+        policy_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_policy_cr)
+        value_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_value_cr)
+    elif bc_model_path_train == "./bc_runs_ireca/reproduce_train/asymmetric_advantages":
+        policy_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_policy_aa)
+        value_optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate_value_aa)
 
-    for t in range(steps_per_epoch):
-        # Sample actions for agents
-        action_logits_AI_agent, action_AI_agent = sample_action(observation_AI)
-        action_HM_agent = tf.argmax(tf.nn.softmax(bc_model_train(observation_HM, training=False)), axis=1)
+    """
+    ## Train
+    """
 
-        # Step the environment
-        obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(
-            [tf.keras.backend.get_value(action_AI_agent[0]), tf.keras.backend.get_value(action_HM_agent[0])]
-        )
+    # Pre-compute and set static parameters outside loops
+    avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
+    observation_AI = tf.reshape(observation_AI, (1, -1))
+    observation_HM = tf.reshape(observation_HM, (1, -1))
 
-        # Extract and reshape observations once at each step
-        observation_AI, observation_HM = (
-            tf.reshape(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
-            tf.reshape(obs_dict_new["both_agent_obs"][other_agent_env_idx], (1, -1))
-        )
+    # Training Loop
+    for epoch in range(epochs):
+        time = datetime.now()
+        sum_return_sparse, sum_return_shaped, sum_return_env, sum_length, num_episodes = 0, 0, 0, 0, 0
 
-        # Compute and accumulate rewards
-        reward_env = reward_sparse + max(0, 1 - count_step * learning_rate_reward_shaping) * reward_shaped
-        episode_return_sparse, episode_return_shaped, episode_return_env = (
-            episode_return_sparse + reward_sparse,
-            episode_return_shaped + reward_shaped,
-            episode_return_env + reward_env,
-        )
+        for t in range(steps_per_epoch):
+            # Sample actions for agents
+            action_logits_AI_agent, action_AI_agent = sample_action(observation_AI)
+            action_HM_agent = tf.argmax(tf.nn.softmax(bc_model_train(observation_HM, training=False)), axis=1)
 
-        # Store necessary data in buffer
-        buffer.store(observation_AI, action_AI_agent, reward_env, critic(observation_AI),
-                     logprobabilities(action_logits_AI_agent, action_AI_agent))
-
-        buffer.last_value_tensor = tf.constant([0], dtype=tf.float32) if done else critic(observation_AI)
-
-        # Handle terminal state and reset
-        if done or (t == steps_per_epoch - 1):
-            buffer.finish_trajectory()
-            sum_return_sparse += episode_return_sparse
-            sum_return_shaped += episode_return_shaped
-            sum_return_env += episode_return_env
-            sum_length += episode_length
-            num_episodes += 1
-
-            # Reset environment and episode stats
-            obs_dict = env.reset()
-            observation_AI, observation_HM = (
-                tf.reshape(obs_dict["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
-                tf.reshape(obs_dict["both_agent_obs"][other_agent_env_idx], (1, -1))
+            # Step the environment
+            obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(
+                [tf.keras.backend.get_value(action_AI_agent[0]), tf.keras.backend.get_value(action_HM_agent[0])]
             )
-            episode_return_sparse, episode_return_shaped, episode_return_env, episode_length = 0, 0, 0, 0
 
-    training_time = datetime.now()
-    # Training policy with mini-batches
-    for _ in range(iterations_train_policy):
-        for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches_gpu(
-            *buffer.get(), batch_size
-        ):
-            kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
-            if kl > 1.5 * target_kl:
-                break
-            train_value_function(obs_batch, ret_batch)
+            # Extract and reshape observations once at each step
+            observation_AI, observation_HM = (
+                tf.reshape(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
+                tf.reshape(obs_dict_new["both_agent_obs"][other_agent_env_idx], (1, -1))
+            )
 
-    print(f'TIME ELAPSED on TRAINING in EPOCH {epoch}: {str((datetime.now() - training_time).total_seconds())}')
+            # Compute and accumulate rewards
+            reward_env = reward_sparse + max(0, 1 - count_step * learning_rate_reward_shaping) * reward_shaped
+            episode_return_sparse, episode_return_shaped, episode_return_env = (
+                episode_return_sparse + reward_sparse,
+                episode_return_shaped + reward_shaped,
+                episode_return_env + reward_env,
+            )
 
-    # Summarize results after each epoch
-    avg_return_shaped.append(sum_return_shaped / num_episodes)
-    avg_return_sparse.append(sum_return_sparse / num_episodes)
-    avg_return_env.append(sum_return_env / num_episodes)
+            # Store necessary data in buffer
+            buffer.store(observation_AI, action_AI_agent, reward_env, critic(observation_AI),
+                         logprobabilities(action_logits_AI_agent, action_AI_agent))
 
-    print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).total_seconds())}')
+            buffer.last_value_tensor = tf.constant([0], dtype=tf.float32) if done else critic(observation_AI)
+
+            # Handle terminal state and reset
+            if done or (t == steps_per_epoch - 1):
+                buffer.finish_trajectory()
+                sum_return_sparse += episode_return_sparse
+                sum_return_shaped += episode_return_shaped
+                sum_return_env += episode_return_env
+                sum_length += episode_length
+                num_episodes += 1
+
+                # Reset environment and episode stats
+                obs_dict = env.reset()
+                observation_AI, observation_HM = (
+                    tf.reshape(obs_dict["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
+                    tf.reshape(obs_dict["both_agent_obs"][other_agent_env_idx], (1, -1))
+                )
+                episode_return_sparse, episode_return_shaped, episode_return_env, episode_length = 0, 0, 0, 0
+
+        training_time = datetime.now()
+        # Training policy with mini-batches
+        for _ in range(iterations_train_policy):
+            for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches_gpu(
+                    *buffer.get(), batch_size
+            ):
+                kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
+                if kl > 1.5 * target_kl:
+                    break
+                train_value_function(obs_batch, ret_batch)
+
+        print(f'TIME ELAPSED on TRAINING in EPOCH {epoch}: {str((datetime.now() - training_time).total_seconds())}')
+
+        # Summarize results after each epoch
+        avg_return_shaped.append(sum_return_shaped / num_episodes)
+        avg_return_sparse.append(sum_return_sparse / num_episodes)
+        avg_return_env.append(sum_return_env / num_episodes)
+
+        print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).total_seconds())}')
