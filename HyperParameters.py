@@ -1,7 +1,6 @@
 import gym
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv, Overcooked
-from stable_baselines3.common.vec_env import SubprocVecEnv
 from BC_model_functions import load_bc_model
 
 
@@ -59,7 +58,6 @@ def make_env():
 
 
 num_envs = 4  # Number of parallel environments
-vec_env = SubprocVecEnv([make_env for _ in range(num_envs)])
 
 # -------- (BC human) model loading --------
 bc_model_train, bc_params_train = load_bc_model(bc_model_path_train)

@@ -2,9 +2,10 @@ import os
 from datetime import datetime
 
 import numpy as np
-import tensorflow as tf
 import scipy.signal
+import tensorflow as tf
 import matplotlib.pyplot as plt
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
 """
 ## Functions and class
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     from func_nn_ppo import func_nn_ppo
     from HyperParameters import *
 
-    env = vec_env
+    env = SubprocVecEnv([make_env for _ in range(num_envs)])
 
     # ----
     seed_generator = tf.random.set_seed(1337)
