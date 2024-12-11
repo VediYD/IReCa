@@ -703,7 +703,7 @@ class Overcooked(gym.Env):
 
     # gym checks for the action space and obs space while initializing the env and throws an error if none exists
     # custom_init after __init__ no longer works
-    # might as well move all the initilization into the actual __init__
+    # might as well move all the initialization into the actual __init__
     def __init__(self, base_env, featurize_fn, baselines_reproducible=False):
         """
         base_env: OvercookedEnv

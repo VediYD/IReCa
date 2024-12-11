@@ -5,7 +5,8 @@ import numpy as np
 import scipy.signal
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from stable_baselines3.common.vec_env import SubprocVecEnv
+
+from multiprocessing import Process, Pipe
 
 """
 ## Functions and class
@@ -111,12 +112,15 @@ def logprobabilities(action_logits_AI_agent, a):
     return logprobability
 
 
+def _sample_action(_logits):
+    return tf.cast(tf.squeeze(tf.random.categorical(_logits, 1, seed=seed_generator), axis=1), tf.int32)
+
+
 @tf.function  # Sample action_AI_agent from actor
 def sample_action(observation_AI):
-    action_logits_AI_agent = actor(observation_AI)
-    action_AI_agent = tf.squeeze(tf.random.categorical(action_logits_AI_agent, 1, seed=seed_generator), axis=1)
-    action_AI_agent = tf.cast(action_AI_agent, tf.int32)
-    return action_logits_AI_agent, action_AI_agent
+    _logits = [actor(i) for i in observation_AI]
+    _actions = [_sample_action(i) for i in _logits]
+    return _logits, _actions
 
 
 @tf.function  # Train the policy by maxizing the PPO-Clip objective
@@ -142,37 +146,142 @@ def train_value_function(observation_buffer, return_env_buffer):  # 训练价值
     value_optimizer.apply_gradients(zip(value_grads, critic.trainable_variables))
 
 
+def worker(remote, parent_remote, env_fn_wrapper):
+    parent_remote.close()
+    _env = env_fn_wrapper.x()
+    while True:
+        cmd, data = remote.recv()
+        if cmd == "step":
+            obs, reward, _done, info = _env.step(data)
+            remote.send((obs, reward, _done, info))
+        elif cmd == "reset":
+            obs = _env.reset()
+            remote.send(obs)
+        elif cmd == "close":
+            remote.close()
+            break
+        else:
+            raise NotImplementedError
+
+
+class EnvWrapper:
+    def __init__(self, env_fn, _num_envs, max_steps_per_epoch):
+        self._num_envs = _num_envs
+        self.max_steps_per_epoch = max_steps_per_epoch
+        self.current_step = np.zeros(_num_envs, dtype=int)
+        self.pipes = []
+        self.workers = []
+
+        for _ in range(_num_envs):
+            parent_pipe, child_pipe = Pipe()
+            process = Process(target=worker, args=(child_pipe, parent_pipe, Wrapper(env_fn)))
+            process.daemon = True
+            process.start()
+            child_pipe.close()
+
+            self.pipes.append(parent_pipe)
+            self.workers.append(process)
+
+    def step(self, actions_hm_ai):
+
+        for pipe, action in zip(self.pipes, actions_hm_ai):
+            pipe.send(("step", action))
+
+        results = [pipe.recv() for pipe in self.pipes]
+        obs, rewards_sparse, rewards_shape, dones = zip(*results)
+
+        for idx, _done in enumerate(dones):
+            self.current_step[idx] += 1
+
+            if _done or self.current_step[idx] >= self.max_steps_per_epoch:
+                self.pipes[idx].send(("reset", None))
+                obs[idx] = self.pipes[idx].recv()
+                self.current_step[idx] = 0
+
+        return obs, rewards_sparse, rewards_shape, dones
+
+    def reset(self):
+        for pipe in self.pipes:
+            pipe.send(("reset", None))
+        return [pipe.recv() for pipe in self.pipes]
+
+    def close(self):
+        for pipe in self.pipes:
+            pipe.send(("close", None))
+        for _worker in self.workers:
+            _worker.join()
+
+
+class Wrapper:
+    def __init__(self, fn):
+        self.fn = fn
+
+    def x(self):
+        return self.fn()
+
+
+def caster(x):
+    return tf.cast(tf.reshape(np.array(x), (1, -1)), dtype=tf.float32)
+
+
+def get_observations(_obs_dict):
+    _both, _other = [], []
+    for i in _obs_dict:
+        _both.append(i["both_agent_obs"])
+        _other.append(i["other_agent_env_idx"])
+
+    return _both, _other
+
+
+def get_agent_obs(_both, _other):
+    obs_ai, obs_hm = [], []
+    for i, j in zip(_both, _other):
+        obs_ai.append(caster(i[1 - j]))
+        obs_hm.append(caster(i[j]))
+
+    return obs_ai, obs_hm
+
+
+def get_hm_action(obs_hm):
+    def _get_hm_action(_obs_hm):
+        return tf.argmax(tf.nn.softmax(bc_model_train(_obs_hm, training=False)), axis=1)
+
+    return list(map(_get_hm_action, obs_hm))
+
+
+def get_agent_value(agent):
+    def _get_agent_value(_agent):
+        return tf.keras.backend.get_value(_agent[0])
+
+    return list(map(_get_agent_value, agent))
+
+
 if __name__ == '__main__':
     from func_nn_ppo import func_nn_ppo
     from HyperParameters import *
 
-    env = SubprocVecEnv([make_env for _ in range(num_envs)])
-
     # ----
     seed_generator = tf.random.set_seed(1337)
     tf.config.run_functions_eagerly(False)
+    env = EnvWrapper(make_env, num_envs, max_steps_per_epoch=steps_per_epoch)
 
     """
     ## Initializations  
     """
-    observation_dimensions = env.observation_space.shape[0]
-    num_actions = env.action_space.n
+    temp_env = make_env()
+    observation_dimensions = temp_env.observation_space.shape[0]
+    num_actions = temp_env.action_space.n
     obs_dict = env.reset()  # 得到 reset 函数返回的字典值
     # -- 把字典里面的各种物理量提取出来 --
-    both_agent_obs = obs_dict["both_agent_obs"]  # 获取两个智能体的观察值
-    other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能体的环境索引
+    both_agent_obs, other_agent_env_idx = get_observations(obs_dict)
+    observation_AI, observation_HM = get_agent_obs(both_agent_obs, other_agent_env_idx)
 
-    observation_AI = np.array(both_agent_obs[1 - other_agent_env_idx])
-    observation_HM = np.array(both_agent_obs[other_agent_env_idx])
+    episode_return_sparse = [0 for _ in range(num_envs)]
+    episode_return_shaped = [0 for _ in range(num_envs)]
+    episode_return_env = [0 for _ in range(num_envs)]
+    episode_length = [0 for _ in range(num_envs)]
 
-    observation_AI = tf.cast(tf.reshape(observation_AI, (1, -1)), dtype=tf.float32)
-    observation_HM = tf.cast(tf.reshape(observation_HM, (1, -1)), dtype=tf.float32)
-
-    episode_return_sparse, episode_return_shaped = 0, 0
-    episode_return_env, episode_length = 0, 0
-    count_step = 0
-
-    buffer = Buffer(observation_dimensions, steps_per_epoch)  # Initialize the buffer (# 初始化缓冲区)
+    buffer = [Buffer(observation_dimensions, steps_per_epoch) for _ in range(num_envs)]
     actor, critic = func_nn_ppo(observation_dimensions, num_actions)
 
     # Initialize the policy and the value function optimizers
@@ -189,71 +298,73 @@ if __name__ == '__main__':
 
     # Pre-compute and set static parameters outside loops
     avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
-    observation_AI = tf.reshape(observation_AI, (1, -1))
-    observation_HM = tf.reshape(observation_HM, (1, -1))
 
     # Training Loop
     for epoch in range(epochs):
         time = datetime.now()
-        sum_return_sparse, sum_return_shaped, sum_return_env, sum_length, num_episodes = 0, 0, 0, 0, 0
+        sum_return_sparse = [0 for _ in range(num_envs)]
+        sum_return_shaped = [0 for _ in range(num_envs)]
+        sum_return_env = [0 for _ in range(num_envs)]
+        sum_length = [0 for _ in range(num_envs)]
+        num_episodes = [0 for _ in range(num_envs)]
 
         for t in range(steps_per_epoch):
             # Sample actions for agents
             action_logits_AI_agent, action_AI_agent = sample_action(observation_AI)
-            action_HM_agent = tf.argmax(tf.nn.softmax(bc_model_train(observation_HM, training=False)), axis=1)
+            action_HM_agent = get_hm_action(observation_HM)
 
             # Step the environment
             obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(
-                [tf.keras.backend.get_value(action_AI_agent[0]), tf.keras.backend.get_value(action_HM_agent[0])]
+                list(zip(get_agent_value(action_AI_agent), get_agent_value(action_HM_agent)))
             )
 
             # Extract and reshape observations once at each step
-            observation_AI, observation_HM = (
-                tf.reshape(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
-                tf.reshape(obs_dict_new["both_agent_obs"][other_agent_env_idx], (1, -1))
-            )
+            observation_AI, observation_HM = get_agent_obs(obs_dict_new, other_agent_env_idx)
 
             # Compute and accumulate rewards
-            reward_env = reward_sparse + max(0, 1 - count_step * learning_rate_reward_shaping) * reward_shaped
-            episode_return_sparse, episode_return_shaped, episode_return_env = (
-                episode_return_sparse + reward_sparse,
-                episode_return_shaped + reward_shaped,
-                episode_return_env + reward_env,
-            )
+            for i in range(num_envs):
+                reward_env = reward_sparse[i] + max(0, 1 - t * learning_rate_reward_shaping) * reward_shaped[i]
+                episode_return_sparse[i] += reward_sparse[i]
+                episode_return_shaped[i] += reward_shaped[i]
+                episode_return_env[i] += [reward_env]
 
-            # Store necessary data in buffer
-            buffer.store(observation_AI, action_AI_agent, reward_env, critic(observation_AI),
-                         logprobabilities(action_logits_AI_agent, action_AI_agent))
-
-            buffer.last_value_tensor = tf.constant([0], dtype=tf.float32) if done else critic(observation_AI)
-
-            # Handle terminal state and reset
-            if done or (t == steps_per_epoch - 1):
-                buffer.finish_trajectory()
-                sum_return_sparse += episode_return_sparse
-                sum_return_shaped += episode_return_shaped
-                sum_return_env += episode_return_env
-                sum_length += episode_length
-                num_episodes += 1
+                buffer[i].store(
+                    observation_AI[i],
+                    action_AI_agent[i],
+                    reward_env,
+                    critic(observation_AI[i]),
+                    logprobabilities(action_logits_AI_agent, action_AI_agent)
+                )
+                buffer[i].last_value_tensor = tf.constant([0], dtype=tf.float32) if done else critic(observation_AI[i])
+                if done[i] or (t == steps_per_epoch - 1):
+                    buffer[i].finish_trajectory()
+                    sum_return_sparse[i] += episode_return_sparse[i]
+                    sum_return_shaped[i] += episode_return_shaped[i]
+                    sum_return_env[i] += episode_return_env[i]
+                    sum_length[i] += episode_length[i]
+                    num_episodes[i] += 1
 
                 # Reset environment and episode stats
                 obs_dict = env.reset()
-                observation_AI, observation_HM = (
-                    tf.reshape(obs_dict["both_agent_obs"][1 - other_agent_env_idx], (1, -1)),
-                    tf.reshape(obs_dict["both_agent_obs"][other_agent_env_idx], (1, -1))
-                )
-                episode_return_sparse, episode_return_shaped, episode_return_env, episode_length = 0, 0, 0, 0
+                observation_AI, observation_HM = get_agent_obs(obs_dict, other_agent_env_idx)
+
+                sum_return_sparse = [0 for _ in range(num_envs)]
+                sum_return_shaped = [0 for _ in range(num_envs)]
+                sum_return_env = [0 for _ in range(num_envs)]
+                sum_length = [0 for _ in range(num_envs)]
+                num_episodes = [0 for _ in range(num_envs)]
 
         training_time = datetime.now()
         # Training policy with mini-batches
         for _ in range(iterations_train_policy):
-            for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches_gpu(
-                    *buffer.get(), batch_size
-            ):
-                kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
-                if kl > 1.5 * target_kl:
-                    break
-                train_value_function(obs_batch, ret_batch)
+            for _buffer in buffer:
+                for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches_gpu(
+                        *_buffer.get(), batch_size
+                ):
+                    kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
+                    if kl > 1.5 * target_kl:
+                        break
+                    train_value_function(obs_batch, ret_batch)
 
         print(f'TIME ELAPSED on TRAINING in EPOCH {epoch}: {str((datetime.now() - training_time).total_seconds())}')
 
