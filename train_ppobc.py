@@ -335,7 +335,7 @@ if __name__ == '__main__':
                     action_AI_agent[i],
                     reward_env,
                     critic(observation_AI[i]),
-                    logprobabilities(action_logits_AI_agent, action_AI_agent)
+                    logprobabilities(action_logits_AI_agent[i], action_AI_agent[i])
                 )
                 buffer[i].last_value_tensor = tf.constant([0], dtype=tf.float32) if done else critic(observation_AI[i])
                 if done[i] or (t == steps_per_epoch - 1):
