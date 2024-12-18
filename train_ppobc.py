@@ -253,7 +253,8 @@ for epoch in range(epochs):
     print(
         f" Mean sparse: {mean_sparse}. \n"
         f"Mean shaped: {mean_shaped}. \n"
-        f"Mean Env: {mean_env}. "
+        f"Mean Env: {mean_env}. \n"
+        '*'*30
     )
 
     avg_return_shaped.append(mean_shaped)
