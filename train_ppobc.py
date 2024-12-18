@@ -263,6 +263,7 @@ if __name__ == '__main__':
     # ----
     seed_generator = tf.random.set_seed(1337)
     tf.config.run_functions_eagerly(False)
+    num_envs = 1
     env = EnvWrapper(make_env, num_envs, max_steps_per_epoch=steps_per_epoch)
 
     """
@@ -275,6 +276,7 @@ if __name__ == '__main__':
     # -- 把字典里面的各种物理量提取出来 --
     both_agent_obs, other_agent_env_idx = get_observations(obs_dict)
     observation_AI, observation_HM = get_agent_obs(both_agent_obs, other_agent_env_idx)
+    print('>> 0')
 
     episode_return_sparse = [0 for _ in range(num_envs)]
     episode_return_shaped = [0 for _ in range(num_envs)]
@@ -320,6 +322,7 @@ if __name__ == '__main__':
 
             # Extract and reshape observations once at each step
             observation_AI, observation_HM = get_agent_obs(obs_dict_new, other_agent_env_idx)
+            print('>> 1')
 
             # Compute and accumulate rewards
             for i in range(num_envs):
