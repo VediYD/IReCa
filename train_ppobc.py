@@ -152,7 +152,12 @@ def worker(remote, parent_remote, env_fn_wrapper):
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
-            obs, reward_a, reward_b, _done = _env.step(data)
+            temp = _env.step(data)
+            print('*'*80)
+            print(temp)
+            print(len(temp))
+            print('*'*80)
+            obs, reward_a, reward_b, _done = temp
             remote.send((obs, reward, _done, info))
         elif cmd == "reset":
             obs = _env.reset()
