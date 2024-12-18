@@ -189,6 +189,7 @@ class EnvWrapper:
 
         results = [pipe.recv() for pipe in self.pipes]
         obs, rewards_sparse, rewards_shape, dones, _ = zip(*results)
+        obs = list(obs)
 
         for idx, _done in enumerate(dones):
             self.current_step[idx] += 1
