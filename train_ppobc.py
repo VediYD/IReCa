@@ -300,6 +300,7 @@ if __name__ == '__main__':
 
     # Pre-compute and set static parameters outside loops
     avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
+    print("START")
 
     # Training Loop
     for epoch in range(epochs):
@@ -309,6 +310,9 @@ if __name__ == '__main__':
         sum_return_env = np.zeros(num_envs)
         sum_length = np.zeros(num_envs)
         num_episodes = np.zeros(num_envs)
+
+        print('>> EPOCH: ', epoch)
+        print('>> STEPS/EPOCH: ', steps_per_epoch)
 
         for t in range(steps_per_epoch):
             # Sample actions for agents
@@ -392,3 +396,5 @@ if __name__ == '__main__':
         avg_return_env.append(_avg_return_env)
 
         print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).total_seconds())}')
+
+    print('STOP')
