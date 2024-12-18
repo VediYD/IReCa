@@ -1,9 +1,5 @@
 import os
 
-os.environ["KERAS_BACKEND"] = "tensorflow"
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # 指定使用哪块GPU
-
 import numpy as np
 import tensorflow as tf
 import scipy.signal
@@ -13,7 +9,6 @@ from func_nn_ppo import func_nn_ppo
 from HyperParameters import *
 
 # ----
-
 seed_generator = tf.random.set_seed(1337)
 
 """
@@ -21,60 +16,54 @@ seed_generator = tf.random.set_seed(1337)
 """
 
 
-def tf_get_mini_batches(obs_buf, act_buf, adv_buf, ret_buf, logp_buf, batch_size):
+def tf_get_mini_batches(_obs_buf, _act_buf, _adv_buf, _ret_buf, _logp_buf, _batch_size):
     dataset = tf.data.Dataset.from_tensor_slices((
-        obs_buf,
-        act_buf,
-        adv_buf,
-        ret_buf,
-        logp_buf,
+        _obs_buf,
+        _act_buf,
+        _adv_buf,
+        _ret_buf,
+        _logp_buf,
     ))
 
-    dataset = dataset.shuffle(buffer_size=len(obs_buf))  # 打乱数据
-    dataset = dataset.batch(batch_size)  # 按批次分割数据
+    dataset = dataset.shuffle(buffer_size=len(_obs_buf))  # 打乱数据
+    dataset = dataset.batch(_batch_size)  # 按批次分割数据
     return dataset
 
 
-def discounted_cumulative_sums(x,
-                               discount):  # Discounted cumulative sums of vectors for computing rewards-to-go and advantage estimates (计算折扣累计和，用于计算奖励到期和优势估计)
+def discounted_cumulative_sums(x, discount):
     return scipy.signal.lfilter([1], [1, float(-discount)], x[::-1], axis=0)[::-1]
 
 
 class Buffer:  # Buffer for storing trajectories (存储轨迹的缓冲区)
-    def __init__(self, observation_dimensions, size, gamma=0.99, lam=0.95):  # Buffer initialization (缓冲区初始化)
-        self.observation_buffer = np.zeros((size, observation_dimensions), dtype=np.float32)
+    def __init__(self, _observation_dimensions, size, _gamma=0.99, _lam=0.95):  # Buffer initialization (缓冲区初始化)
+        self.observation_buffer = np.zeros((size, _observation_dimensions), dtype=np.float32)
         self.action_buffer = np.zeros(size, dtype=np.int32)
         self.advantage_buffer = np.zeros(size, dtype=np.float32)
         self.reward_env_buffer = np.zeros(size, dtype=np.float32)
         self.return_env_buffer = np.zeros(size, dtype=np.float32)
         self.value_buffer = np.zeros(size, dtype=np.float32)
-        self.logprobability_buffer = np.zeros(size, dtype=np.float32)
-        self.gamma, self.lam = gamma, lam
+        self.log_probability_buffer = np.zeros(size, dtype=np.float32)
+        self.gamma, self.lam = _gamma, _lam
         self.pointer, self.trajectory_start_index = 0, 0
 
-    def store(self, observation_AI, action_AI_agent, reward_env, value,
-              logprobability):  # Append one step of agent-environment interaction (存储一次"代理-环境"交互的步骤)
-        self.observation_buffer[self.pointer] = observation_AI
-        self.action_buffer[self.pointer] = action_AI_agent
-        self.reward_env_buffer[self.pointer] = reward_env
+    def store(self, _observation_ai, _action_ai_agent, _reward_env, value, log_probability):
+        self.observation_buffer[self.pointer] = _observation_ai
+        self.action_buffer[self.pointer] = _action_ai_agent
+        self.reward_env_buffer[self.pointer] = _reward_env
         self.value_buffer[self.pointer] = value
-        self.logprobability_buffer[self.pointer] = logprobability
+        self.log_probability_buffer[self.pointer] = log_probability
         self.pointer += 1
 
-    def finish_trajectory(self,
-                          last_value=0):  # Finish the trajectory by computing advantage estimates and rewards-to-go (完成轨迹，通过计算优势估计和奖励到期)
+    def finish_trajectory(self, _last_value=0):
         path_slice = slice(self.trajectory_start_index, self.pointer)
-        rewards = np.append(self.reward_env_buffer[path_slice], last_value)
-        values = np.append(self.value_buffer[path_slice], last_value)
-
+        rewards = np.append(self.reward_env_buffer[path_slice], _last_value)
+        values = np.append(self.value_buffer[path_slice], _last_value)
         deltas = rewards[:-1] + self.gamma * values[1:] - values[:-1]  # 计算优势估计
         self.advantage_buffer[path_slice] = discounted_cumulative_sums(deltas, self.gamma * self.lam)
-
         self.return_env_buffer[path_slice] = discounted_cumulative_sums(rewards, self.gamma)[:-1]  # 计算奖励到期
-
         self.trajectory_start_index = self.pointer
 
-    def get(self):  # Get all data of the buffer and normalize the advantages (获取所有缓冲区的数据)
+    def get(self):
         self.pointer, self.trajectory_start_index = 0, 0
         advantage_mean, advantage_std = (
             np.mean(self.advantage_buffer),
@@ -86,48 +75,42 @@ class Buffer:  # Buffer for storing trajectories (存储轨迹的缓冲区)
             self.action_buffer,
             self.advantage_buffer,
             self.return_env_buffer,
-            self.logprobability_buffer,
+            self.log_probability_buffer,
         )
 
 
-def mlp(x, sizes, activation=tf.keras.activations.tanh, output_activation=None):  # Build a feedforward neural network
-    # for size in sizes[:-1]:
-    #     x = tf.keras.layers.Dense(units=size, activation=activation)(x)
+def mlp(x, sizes, output_activation=None):  # Build a feedforward neural network
     x = tf.keras.layers.Dense(64, activation="tanh")(x)
     x = tf.keras.layers.Dense(64, activation="tanh")(x)
-
     return tf.keras.layers.Dense(units=sizes[-1], activation=output_activation)(x)
-    # return tf.keras.layers.Dense(64)(x)
 
 
-def logprobabilities(action_logits_AI_agent,
-                     a):  # Compute the log-probabilities of taking actions a by using the action_logits_AI_agent (i.e. the output of the actor) (计算动作 a 的对数概率)
-    logprobabilities_all = tf.nn.log_softmax(action_logits_AI_agent)
-    logprobability = tf.reduce_sum(tf.one_hot(a, num_actions) * logprobabilities_all, axis=1)
-    return logprobability
+def log_probabilities(_action_logits_ai_agent, a):
+    log_probabilities_all = tf.nn.log_softmax(_action_logits_ai_agent)
+    log_probability = tf.reduce_sum(tf.one_hot(a, num_actions) * log_probabilities_all, axis=1)
+    return log_probability
 
 
-# @tf.function是TensorFlow库中的一个装饰器，用于将普通的Python函数转换为TensorFlow图形函数(也称为计算图函数)。它的主要作用和目的是为了加速执行，
 @tf.function  # Sample action_AI_agent from actor
-def sample_action(observation_AI):
-    action_logits_AI_agent = actor(observation_AI)
-    action_AI_agent = tf.squeeze(tf.random.categorical(action_logits_AI_agent, 1, seed=seed_generator), axis=1)
-    return action_logits_AI_agent, action_AI_agent
+def sample_action(_observation_ai):
+    _action_logits_ai_agent = actor(_observation_ai)
+    _action_ai_agent = tf.squeeze(tf.random.categorical(_action_logits_ai_agent, 1, seed=seed_generator), axis=1)
+    return _action_logits_ai_agent, _action_ai_agent
 
 
 @tf.function  # Train the policy by maxizing the PPO-Clip objective
-def train_policy(observation_buffer, action_buffer, logprobability_buffer, advantage_buffer):  # 训练策略网络
+def train_policy(observation_buffer, action_buffer, log_probability_buffer, advantage_buffer):  # 训练策略网络
     with tf.GradientTape() as tape:  # Record operations for automatic differentiation.
-        ratio = tf.exp(logprobabilities(actor(observation_buffer), action_buffer) - logprobability_buffer)
+        ratio = tf.exp(log_probabilities(actor(observation_buffer), action_buffer) - log_probability_buffer)
         min_advantage = tf.where(advantage_buffer > 0, (1 + clip_ratio) * advantage_buffer,
                                  (1 - clip_ratio) * advantage_buffer)
         policy_loss = -tf.reduce_mean(tf.minimum(ratio * advantage_buffer, min_advantage))
     policy_grads = tape.gradient(policy_loss, actor.trainable_variables)
     policy_optimizer.apply_gradients(zip(policy_grads, actor.trainable_variables))
 
-    kl = tf.reduce_mean(logprobability_buffer - logprobabilities(actor(observation_buffer), action_buffer))
-    kl = tf.reduce_sum(kl)
-    return kl
+    _kl = tf.reduce_mean(log_probability_buffer - log_probabilities(actor(observation_buffer), action_buffer))
+    _kl = tf.reduce_sum(_kl)
+    return _kl
 
 
 @tf.function  # Train the value function by regression on mean-squared error
@@ -143,65 +126,21 @@ def train_value_function(observation_buffer, return_env_buffer):  # 训练价值
 """
 observation_dimensions = env.observation_space.shape[0]
 num_actions = env.action_space.n
-# print('\n')
-# print('observation_dimensions:', observation_dimensions)
-# print('num_actions:', num_actions)
-# # print('\nenv.action_space:', env.action_space)
-# print('\n')
 
-obs_dict = env.reset()  # 得到 reset 函数返回的字典值
-# -- 把字典里面的各种物理量提取出来 --
-both_agent_obs = obs_dict["both_agent_obs"]  # 获取两个智能体的观察值
-# agent_obs_0 = both_agent_obs[0]  # 第一个智能体的观察值
-# agent_obs_1 = both_agent_obs[1]  # 第二个智能体的观察值
-# overcooked_state = obs_dict["overcooked_state"] # 获取当前的Overcooked状态
-other_agent_env_idx = obs_dict["other_agent_env_idx"]  # 获取另一个智能体的环境索引
-# print('\n')
-# # print('=====> both_agent_obs is:', both_agent_obs)
-# # print('=====> agent_obs_0 is:', agent_obs_0)
-# # print('=====> agent_obs_1 is:', agent_obs_1)
-# # print('=====> overcooked_state is:', overcooked_state)
-# print('=====> other_agent_env_idx is:', other_agent_env_idx)
-# print('\n')
+obs_dict = env.reset()
 
-# ACTION_TO_CHAR = {
-#     Direction.NORTH: "↑",
-#     Direction.SOUTH: "↓",
-#     Direction.EAST: "→",
-#     Direction.WEST: "←",
-#     STAY: "stay",
-#     INTERACT: INTERACT,
-# }
+both_agent_obs = obs_dict["both_agent_obs"]
+other_agent_env_idx = obs_dict["other_agent_env_idx"]
 
-
-# -- 现在你可以使用这些变量进行后续的操作，比如决定哪个智能体行动，或者基于当前状态进行策略计算等
 observation_AI = np.array(both_agent_obs[1 - other_agent_env_idx])
 observation_HM = np.array(both_agent_obs[other_agent_env_idx])
+
 episode_return_sparse, episode_return_shaped = 0, 0
 episode_return_env, episode_length = 0, 0
 count_step = 0
 
-# ---- (CartPole) ----
-# env = gym.make("CartPole-v1")
-# observation_dimensions = env.observation_space.shape[0]
-# num_actions = env.action_space.n
-# # Initialize
-# observation_AI, _ = env.reset()
-# # print('=====> observation_AI init is:', observation_AI)
-# episode_return_env, episode_length = 0, 0
-# -------- end of env configuration --------
-
 buffer = Buffer(observation_dimensions, steps_per_epoch)  # Initialize the buffer (# 初始化缓冲区)
 actor, critic = func_nn_ppo(observation_dimensions, num_actions)
-
-# observation_input = tf.keras.Input(shape=(observation_dimensions,), dtype="float32")
-# action_logits_AI_agent = mlp(observation_input, list(mlp_hidden_sizes) + [num_actions])
-# actor = tf.keras.Model(inputs=observation_input, outputs=action_logits_AI_agent, name='actor_keras')
-# value = tf.squeeze(mlp(observation_input, list(mlp_hidden_sizes) + [1]), axis=1)
-# critic = tf.keras.Model(inputs=observation_input, outputs=value, name='critic_keras')
-
-# actor.summary()
-# critic.summary()
 
 # Initialize the policy and the value function optimizers
 if bc_model_path_train == "./bc_runs_ireca/reproduce_train/cramped_room":
@@ -267,7 +206,7 @@ for epoch in range(epochs):
 
         # Get the value and log-probability of the action_AI_agent (获取动作的价值和对数概率)
         value_t = critic(observation_AI)
-        logprobability_t = logprobabilities(action_logits_AI_agent, action_AI_agent)
+        log_probability_t = log_probabilities(action_logits_AI_agent, action_AI_agent)
 
         # Store obs, act, rew, v_t, logp_pi_t (存储观测、动作、奖励、价值和对数概率)
         buffer.store(observation_AI, action_AI_agent, reward_env, value_t, logprobability_t)
@@ -281,14 +220,18 @@ for epoch in range(epochs):
         if terminal or (t == steps_per_epoch - 1):
             last_value = 0 if done else critic(observation_AI.reshape(1, -1))
             buffer.finish_trajectory(last_value)
+
             sum_return_shaped += episode_return_shaped
             sum_return_sparse += episode_return_sparse
             sum_return_env += episode_return_env
             sum_length += episode_length
             num_episodes += 1
+
             obs_dict = env.reset()
+
             observation_AI = tf.reshape(obs_dict["both_agent_obs"][1 - other_agent_env_idx], (1, -1))
             observation_HM = tf.reshape(obs_dict["both_agent_obs"][other_agent_env_idx], (1, -1))
+
             episode_return_shaped, episode_return_sparse, episode_return_env, episode_length = 0, 0, 0, 0
 
     (obs_buf, act_buf, adv_buf, ret_buf, logp_buf) = buffer.get()
@@ -297,7 +240,7 @@ for epoch in range(epochs):
         for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in tf_get_mini_batches(obs_buf, act_buf, adv_buf,
                                                                                           ret_buf, logp_buf,
                                                                                           batch_size):
-            # for obs_batch, act_batch, adv_batch, ret_batch, logp_batch in get_mini_batches(obs_buf, act_buf, adv_buf, ret_buf, logp_buf, batch_size=batch_size):
+
             kl = train_policy(obs_batch, act_batch, logp_batch, adv_batch)
             if kl > 1.5 * target_kl:
                 break
