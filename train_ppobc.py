@@ -371,6 +371,7 @@ if __name__ == '__main__':
                     train_value_function(obs_batch, ret_batch)
 
         print(f'TIME ELAPSED on TRAINING in EPOCH {epoch}: {str((datetime.now() - training_time).total_seconds())}')
+        print(sum_return_shaped, num_episodes)
         _avg_return_shaped = sum_return_shaped / num_episodes
         _avg_return_sparse = sum_return_sparse / num_episodes
         _avg_return_env = sum_return_env / num_episodes
