@@ -370,10 +370,23 @@ if __name__ == '__main__':
                     train_value_function(obs_batch, ret_batch)
 
         print(f'TIME ELAPSED on TRAINING in EPOCH {epoch}: {str((datetime.now() - training_time).total_seconds())}')
+        _avg_return_shaped = sum_return_shaped / num_episodes
+        _avg_return_sparse = sum_return_sparse / num_episodes
+        _avg_return_env = sum_return_env / num_episodes
+
+        print(
+            f"[ppobc] Epoch: {epoch}. "
+            f"Mean Length: {sum_length / num_episodes}. "
+        )
+        print(
+            f" Mean sparse: {_avg_return_sparse}. "
+            f"Mean shaped: {_avg_return_shaped}. "
+            f"Mean Env: {_avg_return_env}. "
+        )
 
         # Summarize results after each epoch
-        avg_return_shaped.append(sum_return_shaped / num_episodes)
-        avg_return_sparse.append(sum_return_sparse / num_episodes)
-        avg_return_env.append(sum_return_env / num_episodes)
+        avg_return_shaped.append(_avg_return_shaped)
+        avg_return_sparse.append(_avg_return_sparse)
+        avg_return_env.append(_avg_return_env)
 
         print(f'TIME ELAPSED on EPOC {epoch}: {str((datetime.now() - time).total_seconds())}')
