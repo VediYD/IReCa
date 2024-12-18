@@ -235,9 +235,9 @@ def get_observations(_obs_dict):
 
 def get_agent_obs(_both, _other):
     obs_ai, obs_hm = [], []
-    for i, j in zip(_both, _other):
-        obs_ai.append(caster(i[1 - j]))
-        obs_hm.append(caster(i[j]))
+    for _i, _j in zip(_both, _other):
+        obs_ai.append(caster(_i[1 - _j]))
+        obs_hm.append(caster(_i[_j]))
 
     return obs_ai, obs_hm
 
