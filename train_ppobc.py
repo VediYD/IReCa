@@ -328,7 +328,7 @@ if __name__ == '__main__':
                 reward_env = reward_sparse[i] + max(0, 1 - t * learning_rate_reward_shaping) * reward_shaped[i]
                 episode_return_sparse[i] += reward_sparse[i]
                 episode_return_shaped[i] += reward_shaped[i]
-                episode_return_env[i] += [reward_env]
+                episode_return_env[i] += reward_env
 
                 buffer[i].store(
                     observation_AI[i],
