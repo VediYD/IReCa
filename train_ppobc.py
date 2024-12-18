@@ -152,13 +152,8 @@ def worker(remote, parent_remote, env_fn_wrapper):
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
-            temp = _env.step(data)
-            print('*'*80)
-            print(temp)
-            print(len(temp))
-            print('*'*80)
-            obs, reward_a, reward_b, _done = temp
-            remote.send((obs, reward, _done, info))
+            obs, reward_a, reward_b, _done, _info = _env.step(data)
+            remote.send((obs, reward_a, reward_b, _done, _info))
         elif cmd == "reset":
             obs = _env.reset()
             remote.send(obs)
@@ -193,7 +188,7 @@ class EnvWrapper:
             pipe.send(("step", action))
 
         results = [pipe.recv() for pipe in self.pipes]
-        obs, rewards_sparse, rewards_shape, dones = zip(*results)
+        obs, rewards_sparse, rewards_shape, dones, _ = zip(*results)
 
         for idx, _done in enumerate(dones):
             self.current_step[idx] += 1
