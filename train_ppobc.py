@@ -236,8 +236,6 @@ def get_observations(_obs_dict):
 def get_agent_obs(_both, _other):
     obs_ai, obs_hm = [], []
     for _i, _j in zip(_both, _other):
-        print(_i)
-        print(_j)
         obs_ai.append(caster(_i[1 - _j]))
         obs_hm.append(caster(_i[_j]))
 
@@ -278,7 +276,6 @@ if __name__ == '__main__':
     # -- 把字典里面的各种物理量提取出来 --
     both_agent_obs, other_agent_env_idx = get_observations(obs_dict)
     observation_AI, observation_HM = get_agent_obs(both_agent_obs, other_agent_env_idx)
-    print('>> 0')
 
     episode_return_sparse = [0 for _ in range(num_envs)]
     episode_return_shaped = [0 for _ in range(num_envs)]
@@ -323,8 +320,8 @@ if __name__ == '__main__':
             )
 
             # Extract and reshape observations once at each step
-            observation_AI, observation_HM = get_agent_obs(obs_dict_new, other_agent_env_idx)
-            print('>> 1')
+            both_agent_obs, other_agent_env_idx = get_observations(obs_dict)
+            observation_AI, observation_HM = get_agent_obs(both_agent_obs, other_agent_env_idx)
 
             # Compute and accumulate rewards
             for i in range(num_envs):
@@ -351,7 +348,8 @@ if __name__ == '__main__':
 
                 # Reset environment and episode stats
                 obs_dict = env.reset()
-                observation_AI, observation_HM = get_agent_obs(obs_dict, other_agent_env_idx)
+                both_agent_obs, other_agent_env_idx = get_observations(obs_dict)
+                observation_AI, observation_HM = get_agent_obs(both_agent_obs, other_agent_env_idx)
 
                 sum_return_sparse = [0 for _ in range(num_envs)]
                 sum_return_shaped = [0 for _ in range(num_envs)]
