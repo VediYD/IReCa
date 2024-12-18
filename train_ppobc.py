@@ -209,7 +209,7 @@ for epoch in range(epochs):
         log_probability_t = log_probabilities(action_logits_AI_agent, action_AI_agent)
 
         # Store obs, act, rew, v_t, logp_pi_t (存储观测、动作、奖励、价值和对数概率)
-        buffer.store(observation_AI, action_AI_agent, reward_env, value_t, logprobability_t)
+        buffer.store(observation_AI, action_AI_agent, reward_env, value_t, log_probability_t)
 
         # Update the observation_AI (更新观测)
         observation_AI = observation_AI_new
