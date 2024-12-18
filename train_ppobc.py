@@ -304,11 +304,11 @@ if __name__ == '__main__':
     # Training Loop
     for epoch in range(epochs):
         time = datetime.now()
-        sum_return_sparse = [0 for _ in range(num_envs)]
-        sum_return_shaped = [0 for _ in range(num_envs)]
-        sum_return_env = [0 for _ in range(num_envs)]
-        sum_length = [0 for _ in range(num_envs)]
-        num_episodes = [0 for _ in range(num_envs)]
+        sum_return_sparse = np.zeros(num_envs)
+        sum_return_shaped = np.zeros(num_envs)
+        sum_return_env = np.zeros(num_envs)
+        sum_length = np.zeros(num_envs)
+        num_episodes = np.zeros(num_envs)
 
         for t in range(steps_per_epoch):
             # Sample actions for agents
@@ -352,11 +352,11 @@ if __name__ == '__main__':
                 both_agent_obs, other_agent_env_idx = get_observations(obs_dict)
                 observation_AI, observation_HM = get_agent_obs(both_agent_obs, other_agent_env_idx)
 
-                sum_return_sparse = [0 for _ in range(num_envs)]
-                sum_return_shaped = [0 for _ in range(num_envs)]
-                sum_return_env = [0 for _ in range(num_envs)]
-                sum_length = [0 for _ in range(num_envs)]
-                num_episodes = [0 for _ in range(num_envs)]
+                sum_return_sparse = np.zeros(num_envs)
+                sum_return_shaped = np.zeros(num_envs)
+                sum_return_env = np.zeros(num_envs)
+                sum_length = np.zeros(num_envs)
+                num_episodes = np.zeros(num_envs)
 
         training_time = datetime.now()
         # Training policy with mini-batches
