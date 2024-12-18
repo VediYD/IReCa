@@ -53,7 +53,7 @@ mdp = OvercookedGridworld.from_layout_name("cramped_room")
 # ----
 def make_env():
     # Your custom environment creation logic
-    base_env = OvercookedEnv.from_mdp(mdp, horizon=horizon_len)
+    base_env = OvercookedEnv.from_mdp(mdp, horizon=horizon_len, info_level=0)
     return gym.make("Overcooked-v0", base_env=base_env, featurize_fn=base_env.featurize_state_mdp)
 
 
