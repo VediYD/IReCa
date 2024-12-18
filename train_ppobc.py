@@ -152,6 +152,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
+            print(data)
             obs, reward_a, reward_b, _done, _info = _env.step(data)
             remote.send((obs, reward_a, reward_b, _done, _info))
         elif cmd == "reset":
@@ -264,7 +265,7 @@ if __name__ == '__main__':
     # ----
     seed_generator = tf.random.set_seed(1337)
     tf.config.run_functions_eagerly(False)
-    num_envs = 4
+    num_envs = 1
     env = EnvWrapper(make_env, num_envs, max_steps_per_epoch=steps_per_epoch)
 
     """
@@ -300,7 +301,7 @@ if __name__ == '__main__':
 
     # Pre-compute and set static parameters outside loops
     avg_return_shaped, avg_return_sparse, avg_return_env = [], [], []
-    print("START")
+    print("START EPOCHS")
 
     # Training Loop
     for epoch in range(epochs):
@@ -312,7 +313,6 @@ if __name__ == '__main__':
         num_episodes = np.zeros(num_envs)
 
         print('>> EPOCH: ', epoch)
-        print('>> STEPS/EPOCH: ', steps_per_epoch)
 
         for t in range(steps_per_epoch):
             # Sample actions for agents
