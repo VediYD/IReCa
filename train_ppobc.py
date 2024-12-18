@@ -187,17 +187,13 @@ for epoch in range(epochs):
         action_HM_agent_np = action_HM_agent.numpy().tolist()[0]
         action_np = [action_AI_agent_np, action_HM_agent_np]
 
-        # observation_AI_new, reward_env, done, _, _ = env.step(action_AI_agent[0].numpy())
-        print(action_np)
         obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(action_np)
-        print(reward_sparse, reward_shaped)
 
         observation_AI_new = tf.reshape(obs_dict_new["both_agent_obs"][1 - other_agent_env_idx], (1, -1))
         observation_HM_new = tf.reshape(obs_dict_new["both_agent_obs"][other_agent_env_idx], (1, -1))
 
         coeff_reward_shaped = max(0, 1 - count_step * learning_rate_reward_shaping)
         reward_env = reward_sparse + coeff_reward_shaped * reward_shaped
-        #         reward_env = tf.add(reward_sparse, tf.multiply(coeff_reward_shaped, reward_shaped))
 
         episode_return_sparse += reward_sparse
         episode_return_shaped += reward_shaped
@@ -246,19 +242,23 @@ for epoch in range(epochs):
                 break
             train_value_function(obs_batch, ret_batch)
 
-    print(f" [ppobc] Epoch: {epoch}. Mean Length: {sum_length / num_episodes}")
+    mean_sparse = sum_return_sparse / num_episodes
+    mean_shaped = sum_return_shaped / num_episodes
+    mean_env = sum_return_env / num_episodes
+
     print(
-        f" Mean sparse: {sum_return_sparse / num_episodes}. Mean shaped: {sum_return_shaped / num_episodes}. Mean Env: {sum_return_env / num_episodes}. ")
+        f" [ppobc] Epoch: {epoch}. \n"
+        f"Mean Length: {sum_length / num_episodes}"
+    )
+    print(
+        f" Mean sparse: {mean_sparse}. \n"
+        f"Mean shaped: {mean_shaped}. \n"
+        f"Mean Env: {mean_env}. "
+    )
 
-    avg_return_shaped.append(sum_return_shaped / num_episodes)
-    avg_return_sparse.append(sum_return_sparse / num_episodes)
-    avg_return_env.append(sum_return_env / num_episodes)
-
-#     if ((epoch+1) % 20 == 0) or ((epoch+1) == epochs) :
-#         np.save('./data_tmp/data_ppobc_return_shaped.npy', avg_return_shaped)
-#         np.save('./data_tmp/data_ppobc_return_sparse.npy', avg_return_sparse)
-#         np.save('./data_tmp/data_ppobc_return_env.npy',    avg_return_env)
-
+    avg_return_shaped.append(mean_shaped)
+    avg_return_sparse.append(mean_sparse)
+    avg_return_env.append(mean_env)
 
 if bc_model_path_train == "./bc_runs_ccima/reproduce_train/cramped_room":
     actor.save_weights("model_cr_actor_ppobc.h5")
@@ -266,14 +266,3 @@ if bc_model_path_train == "./bc_runs_ccima/reproduce_train/cramped_room":
 elif bc_model_path_train == "./bc_runs_ccima/reproduce_train/asymmetric_advantages":
     actor.save_weights("model_aa_actor_ppobc.h5")
     critic.save_weights("model_aa_critic_ppobc.h5")
-
-# # ----Plot Figure----
-# plt.figure()
-# plt.plot(avg_return_env, markerfacecolor='none')
-# # plt.xlabel('Index of data samples')
-# plt.ylabel('avg_return_env')
-# plt.legend(fontsize=12, loc='lower right')
-# plt.savefig('./figs/ppobc_avg_return_env.pdf', format='pdf')  
-
-
-# plt.show()
