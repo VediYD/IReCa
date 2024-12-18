@@ -152,7 +152,7 @@ def worker(remote, parent_remote, env_fn_wrapper):
     while True:
         cmd, data = remote.recv()
         if cmd == "step":
-            obs, reward, _done, info = _env.step(data)
+            obs, reward_a, reward_b, _done = _env.step(data)
             remote.send((obs, reward, _done, info))
         elif cmd == "reset":
             obs = _env.reset()
@@ -314,7 +314,7 @@ if __name__ == '__main__':
             action_HM_agent = get_hm_action(observation_HM)
 
             # Step the environment
-            obs_dict_new, reward_sparse, reward_shaped, done, _ = env.step(
+            obs_dict_new, reward_sparse, reward_shaped, done = env.step(
                 list(zip(get_agent_value(action_AI_agent), get_agent_value(action_HM_agent)))
             )
 
